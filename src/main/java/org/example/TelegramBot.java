@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class TelegramBot extends TelegramLongPollingBot {
+    private final HelpCommand helpCommand = new HelpCommand();
 
     @Override
     public String getBotUsername() {
@@ -21,21 +22,29 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
+            String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
 
-            // Ответ на сообщение
-            String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
-
-            // Отправка ответа
-            SendMessage message = new SendMessage();
-            message.setChatId(chatId);
-            message.setText(botResponse);
-
-            try {
-                execute(message);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
+            // Обработка команды /help
+            if (userMessage.equals("/help")) {
+                sendResponse(chatId, helpCommand.getHelpMessage());
+            } else {
+                // Логика ответа на другие сообщения
+                String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
+                sendResponse(chatId, botResponse);
             }
+        }
+    }
+
+    private void sendResponse(String chatId, String messageText) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(messageText);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 }
