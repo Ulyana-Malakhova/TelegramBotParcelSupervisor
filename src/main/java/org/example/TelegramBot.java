@@ -7,7 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
-
+    private final AboutCommand aboutCommand = new AboutCommand();
     @Override
     public String getBotUsername() {
         return "parcel_supervisor_bot";
@@ -28,6 +28,10 @@ public class TelegramBot extends TelegramLongPollingBot {
             // Обработка команды /help
             if (userMessage.equals("/help")) {
                 sendResponse(chatId, helpCommand.getHelpMessage());
+            }
+            // Обработка команды /about
+            else if (userMessage.equals("/about")) {
+                sendResponse(chatId, aboutCommand.getAboutMessage());
             } else {
                 // Логика ответа на другие сообщения
                 String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
