@@ -75,7 +75,7 @@ public abstract class TrackingApiClient {
      * @param numberTrack строка-трек номер
      * @return объект PackageLocation с данными о местоположении
      */
-    protected PackageLocation getTrack(String numberTrack){
+    public PackageLocation getTrack(String numberTrack){
         PackageLocation packageLocation = new PackageLocation();
         try {
             JSONObject jsonResponse = getParcelTrackingJson(numberTrack);
@@ -85,10 +85,11 @@ public abstract class TrackingApiClient {
             return packageLocation;
         } catch (IOException | org.apache.hc.core5.http.ParseException ex) {
             System.out.println(STR."Ошибка отправки http-запроса: \{ex.getMessage()}");
+            return null;
         } catch (JSONException e) {
             System.out.println(STR."Ошибка парсинга JSON: \{e.getMessage()}");
+            return null;
         }
-        return packageLocation;
     }
 
     /**
@@ -96,7 +97,7 @@ public abstract class TrackingApiClient {
      * @param numberTrack строка-трек номер
      * @return массив объектов PackageLocation с данными о местоположении
      */
-    protected PackageLocation[] getHistoryTrack(String numberTrack){
+    public PackageLocation[] getHistoryTrack(String numberTrack){
         try {
             JSONObject jsonResponse = getParcelTrackingJson(numberTrack);
             JSONArray statusesArray = getStatuses(jsonResponse);
@@ -109,11 +110,12 @@ public abstract class TrackingApiClient {
             return packageLocations;
         }catch (IOException| org.apache.hc.core5.http.ParseException ex){
             System.out.println(STR."Ошибка отправки http-запроса: \{ex.getMessage()}");
+            return null;
         }
         catch (JSONException e){
             System.out.println(STR."Ошибка парсинга JSON: \{e.getMessage()}");
+            return null;
         }
-        return null;
     }
 
     /**

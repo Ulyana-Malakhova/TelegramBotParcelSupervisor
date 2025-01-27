@@ -16,7 +16,7 @@ public class TrackingApiClientBoxberry extends TrackingApiClient {
         return parcelWithStatuses.getJSONObject(0).getJSONArray("Statuses");
     }
 
-    TrackingApiClientBoxberry(){
+    public TrackingApiClientBoxberry(){
         this.url="https://boxberry.ru/api/v1/tracking/order/get?searchId=";
         this.format = new SimpleDateFormat("dd.MM.yyyy (HH:mm)");
         this.fieldMessage = "name";

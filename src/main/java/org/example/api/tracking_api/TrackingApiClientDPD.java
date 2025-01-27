@@ -14,7 +14,7 @@ public class TrackingApiClientDPD extends TrackingApiClient {
         return jsonResponse.getJSONArray("state");
     }
 
-    TrackingApiClientDPD(){
+    public TrackingApiClientDPD(){
         this.url="https://dpd-site-tracing-backend-api-prod.dpd.ru/api/v3/order?orderNumber=";
         this.format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
         this.fieldMessage = "state_name";

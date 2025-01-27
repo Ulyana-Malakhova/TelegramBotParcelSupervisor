@@ -59,7 +59,7 @@ public class TrackingApiClientCSE extends TrackingApiClient {
         }
     }
 
-    TrackingApiClientCSE() {
+    public TrackingApiClientCSE() {
         this.url = "https://lk.cse.ru/api/new-track/";
         this.format = new SimpleDateFormat("dd.MM.yyyy HH:mm");
         this.fieldMessage = "EventName";
