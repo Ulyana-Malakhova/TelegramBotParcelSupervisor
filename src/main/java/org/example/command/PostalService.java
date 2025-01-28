@@ -1,5 +1,8 @@
 package org.example.command;
 
+/**
+ * Перечисление почтовых сервисов
+ */
 public enum PostalService {
     RUSSIAN_POST("Почта России"),
     BOXBERRY("Boxberry"),

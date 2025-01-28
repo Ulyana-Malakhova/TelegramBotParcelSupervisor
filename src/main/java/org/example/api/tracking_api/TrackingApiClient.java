@@ -49,22 +49,21 @@ public abstract class TrackingApiClient {
      * @throws org.apache.hc.core5.http.ParseException ошибка парсинга HTTP-ответа
      */
     public JSONObject getParcelTrackingJson(String numberTrack) throws IOException, org.apache.hc.core5.http.ParseException {
-        RequestConfig requestConfig = RequestConfig.custom()
+        RequestConfig requestConfig = RequestConfig.custom()    //настройка параметров http-запроса
                 .setConnectTimeout(Timeout.ofSeconds(60))
                 .setResponseTimeout(Timeout.ofSeconds(40))
                 .build();
-        // Создаем HttpClient с заданными настройками
-        CloseableHttpClient httpClient = HttpClients.custom()
+        CloseableHttpClient httpClient = HttpClients.custom() // Создаем HttpClient с заданными настройками
                 .setDefaultRequestConfig(requestConfig)
                 .build();
         HttpGet request = new HttpGet(url + numberTrack);
-        CloseableHttpResponse response = httpClient.execute(request);
+        CloseableHttpResponse response = httpClient.execute(request);   //объект для получения http-ответа
         int statusCode = response.getCode();
         if (statusCode != 200) {
             throw new IOException(STR."HTTP error - \{statusCode}");
         }
         String jsonString = EntityUtils.toString(response.getEntity());
-        JSONObject jsonResponse = new JSONObject(jsonString);
+        JSONObject jsonResponse = new JSONObject(jsonString);   //формирование json-объекта
         httpClient.close();
         response.close();
         return jsonResponse;
@@ -78,8 +77,9 @@ public abstract class TrackingApiClient {
     public PackageLocation getTrack(String numberTrack){
         PackageLocation packageLocation = new PackageLocation();
         try {
-            JSONObject jsonResponse = getParcelTrackingJson(numberTrack);
-            JSONArray statusesArray = getStatuses(jsonResponse);
+            JSONObject jsonResponse = getParcelTrackingJson(numberTrack);   //выполняем http-запрос
+            JSONArray statusesArray = getStatuses(jsonResponse);    //из json получаем список данных о местоположении
+            //получаем данные о текущем положении и парсим
             JSONObject statusObject = statusesArray.getJSONObject(statusesArray.length() - 1);
             parser(packageLocation, statusObject);
             return packageLocation;
@@ -99,10 +99,10 @@ public abstract class TrackingApiClient {
      */
     public PackageLocation[] getHistoryTrack(String numberTrack){
         try {
-            JSONObject jsonResponse = getParcelTrackingJson(numberTrack);
-            JSONArray statusesArray = getStatuses(jsonResponse);
+            JSONObject jsonResponse = getParcelTrackingJson(numberTrack);   //выполняем http-запрос
+            JSONArray statusesArray = getStatuses(jsonResponse);    //из json получаем список данных о местоположении
             PackageLocation[] packageLocations = new PackageLocation[statusesArray.length()];
-            for (int j = 0; j < statusesArray.length(); j++) {
+            for (int j = 0; j < statusesArray.length(); j++) {  //парсим из списка json в список объектов
                 JSONObject statusObject = statusesArray.getJSONObject(j);
                 packageLocations[j] = new PackageLocation();
                 parser(packageLocations[j], statusObject);
