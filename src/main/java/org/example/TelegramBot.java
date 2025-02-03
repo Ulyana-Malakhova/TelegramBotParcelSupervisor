@@ -7,7 +7,17 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
+    private static TelegramBot instance;
     private final AboutCommand aboutCommand = new AboutCommand();
+    private final StartCommand startCommand = new StartCommand();
+
+    public static TelegramBot getInstance() {
+        if (instance == null) {
+            instance = new TelegramBot();
+        }
+        return instance;
+    }
+
     @Override
     public String getBotUsername() {
         return "parcel_supervisor_bot";
@@ -25,8 +35,12 @@ public class TelegramBot extends TelegramLongPollingBot {
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
 
+            // Обработка команды /start
+            if (userMessage.equals("/start")) {
+                startCommand.execute(update);
+            }
             // Обработка команды /help
-            if (userMessage.equals("/help")) {
+            else if (userMessage.equals("/help")) {
                 sendResponse(chatId, helpCommand.getHelpMessage());
             }
             // Обработка команды /about
@@ -37,14 +51,38 @@ public class TelegramBot extends TelegramLongPollingBot {
                 String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                 sendResponse(chatId, botResponse);
             }
+        } else if (update.hasMessage() && update.getMessage().hasContact()) {
+            handleContactUpdate(update);
         }
+    }
+
+    private void handleContactUpdate(Update update) {
+        String chatId = update.getMessage().getChatId().toString();
+        String phoneNumber = update.getMessage().getContact().getPhoneNumber();
+
+        Long userId = update.getMessage().getFrom().getId();
+        String userName = update.getMessage().getFrom().getFirstName();
+        String userSurname = update.getMessage().getFrom().getLastName();
+        String userUsername = update.getMessage().getFrom().getUserName();
+        String userUsername1;
+        if (userUsername != null) {
+            userUsername1 = '@' + userUsername;
+        } else {
+            userUsername1 = userUsername;
+        }
+        // Создаем пользователя с номером телефона
+        startCommand.createUserWithPhone(userId, userName, userSurname, userUsername1, phoneNumber, null, null);
+        sendResponse(chatId, "Спасибо за предоставление вашего номера телефона!");
     }
 
     private void sendResponse(String chatId, String messageText) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(messageText);
+        sendMessage(message);
+    }
 
+    public void sendMessage(SendMessage message) {
         try {
             execute(message);
         } catch (TelegramApiException e) {
