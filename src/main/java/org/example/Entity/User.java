@@ -4,14 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
 @Data
 @Entity
 @Table(name = "\"User\"", schema = "public")
@@ -33,36 +31,4 @@ public class User {
     private String email;
     @Column(name = "\"Password\"")
     private String password;
-
-    public String getName() {
-        return name;
-    }
-
-    public String getSurname() {
-        return surname;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public int getIdStatus() {
-        return idStatus;
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
 }
