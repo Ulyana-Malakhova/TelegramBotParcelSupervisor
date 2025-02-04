@@ -42,19 +42,13 @@ public class TrackingCommand {
             answer = errorMessage;
             return answer;
         }
-        answer = STR."Служба доставки: \{service.toString()}\{'\n'}";
+        answer = "Служба доставки: "+service.toString()+'\n';
         PackageLocation location = null;
         switch (service){   //вызываем метод получения местоположения в соответствии с сервисом
             case RUSSIAN_POST -> {}// TODO почта россии
-            case DPD -> {
-                location = apiDPD.getTrack(trackingNumber);
-            }
-            case CSE ->{
-                location = apiCSE.getTrack(trackingNumber);
-            }
-            case BOXBERRY -> {
-                location = apiBoxberry.getTrack(trackingNumber);
-            }
+            case DPD -> location = apiDPD.getTrack(trackingNumber);
+            case CSE -> location = apiCSE.getTrack(trackingNumber);
+            case BOXBERRY -> location = apiBoxberry.getTrack(trackingNumber);
         }
         if (location!=null) answer = answer + location; //формируем окончательно сообщение
         else answer = answer+errorNotFoundMessage;  //если данные о местоположении не получены - сообщение об ошибке
@@ -73,23 +67,17 @@ public class TrackingCommand {
             answer = errorMessage;
             return answer;
         }
-        answer = STR."Служба доставки: \{service.toString()}\{'\n'}";
+        answer = "Служба доставки: "+service.toString()+'\n';
         PackageLocation[] locations = null;
         switch (service){   //вызываем метод получения истории в соответствии с сервисом
             case RUSSIAN_POST -> {}// TODO почта россии
-            case DPD -> {
-                locations = apiDPD.getHistoryTrack(trackingNumber);
-            }
-            case CSE ->{
-                locations = apiCSE.getHistoryTrack(trackingNumber);
-            }
-            case BOXBERRY -> {
-                locations = apiBoxberry.getHistoryTrack(trackingNumber);
-            }
+            case DPD -> locations = apiDPD.getHistoryTrack(trackingNumber);
+            case CSE ->locations = apiCSE.getHistoryTrack(trackingNumber);
+            case BOXBERRY -> locations = apiBoxberry.getHistoryTrack(trackingNumber);
         }
         if (locations!=null) {
             for (PackageLocation p: locations)
-            answer = STR."\{answer}\{p.toString()}\n"; //формируем окончательно сообщение
+                answer = answer+p.toString()+'\n'; //формируем окончательно сообщение
         }
         else answer = answer+errorNotFoundMessage;  //если данные о истории не получены - сообщение об ошибке
         return answer;

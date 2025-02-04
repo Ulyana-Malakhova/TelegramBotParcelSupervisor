@@ -1,11 +1,11 @@
 package org.example.api.tracking_api;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.core5.util.Timeout;
 import org.example.api.PackageLocation;
 import org.json.JSONArray;
@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Абстрактный класс для получения данных с api-запросов почтовых служб
@@ -50,25 +51,22 @@ public abstract class TrackingApiClient {
      */
     public JSONObject getParcelTrackingJson(String numberTrack) throws IOException, org.apache.hc.core5.http.ParseException {
         RequestConfig requestConfig = RequestConfig.custom()    //настройка параметров http-запроса
-                .setConnectTimeout(Timeout.ofSeconds(60))
                 .setResponseTimeout(Timeout.ofSeconds(40))
                 .build();
-        CloseableHttpClient httpClient = HttpClients.custom() // Создаем HttpClient с заданными настройками
-                .setDefaultRequestConfig(requestConfig)
+        ConnectionConfig connectionConfig = ConnectionConfig.custom() //настройка параметров соединения
+                .setConnectTimeout(60, TimeUnit.SECONDS)
                 .build();
+        BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager();   //объект поддержки одного активного соединения
+        connectionManager.setConnectionConfig(connectionConfig);
         HttpGet request = new HttpGet(url + numberTrack);
-        CloseableHttpResponse response = httpClient.execute(request);   //объект для получения http-ответа
-        int statusCode = response.getCode();
-        if (statusCode != 200) {
-            throw new IOException(STR."HTTP error - \{statusCode}");
-        }
-        String jsonString = EntityUtils.toString(response.getEntity());
-        JSONObject jsonResponse = new JSONObject(jsonString);   //формирование json-объекта
+        CloseableHttpClient httpClient = HttpClientBuilder.create() //объект выполнения http-запроса
+                .setDefaultRequestConfig(requestConfig)
+                .setConnectionManager(connectionManager)
+                .build();
+        JSONObject jsonResponse = httpClient.execute(request, new CustomHttpClientResponseHandler());
         httpClient.close();
-        response.close();
         return jsonResponse;
     }
-
     /**
      * Получение текущего статуса местоположения посылки
      * @param numberTrack строка-трек номер
@@ -84,10 +82,10 @@ public abstract class TrackingApiClient {
             parser(packageLocation, statusObject);
             return packageLocation;
         } catch (IOException | org.apache.hc.core5.http.ParseException ex) {
-            System.out.println(STR."Ошибка отправки http-запроса: \{ex.getMessage()}");
+            System.out.println("Ошибка отправки http-запроса: "+ex.getMessage());
             return null;
         } catch (JSONException e) {
-            System.out.println(STR."Ошибка парсинга JSON: \{e.getMessage()}");
+            System.out.println("Ошибка парсинга JSON: "+e.getMessage());
             return null;
         }
     }
@@ -109,11 +107,11 @@ public abstract class TrackingApiClient {
             }
             return packageLocations;
         }catch (IOException| org.apache.hc.core5.http.ParseException ex){
-            System.out.println(STR."Ошибка отправки http-запроса: \{ex.getMessage()}");
+            System.out.println("Ошибка отправки http-запроса: "+ex.getMessage());
             return null;
         }
         catch (JSONException e){
-            System.out.println(STR."Ошибка парсинга JSON: \{e.getMessage()}");
+            System.out.println("Ошибка парсинга JSON: "+e.getMessage());
             return null;
         }
     }
