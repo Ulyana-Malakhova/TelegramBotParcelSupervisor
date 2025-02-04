@@ -9,7 +9,7 @@ public enum PostalService {
     DPD("DPD"),
     CSE("КСЭ");
 
-    String name;      // Название сервиса
+    final String name;      // Название сервиса
 
     PostalService(String name) {
         this.name = name;
