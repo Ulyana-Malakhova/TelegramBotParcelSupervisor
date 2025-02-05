@@ -1,19 +1,18 @@
-package org.example;
+package org.example.Repository;
 
 import org.example.Entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    //private final DatabaseManager databaseManager;
 
-public class UserRepository {
-    private final DatabaseManager databaseManager;
-
-    public UserRepository() {
+    /*public UserRepository() {
         this.databaseManager = new DatabaseManager();
-    }
+    }*/
 
-    public void addUser(User user) {
+    /*public void addUser(User user) {
         String sql = "INSERT INTO \"User\" (\"Id_User\", \"Name\", \"Surname\", \"Username\", \"Phone_Number\", \"Id_Status\", \"Email\", \"Password\") VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = databaseManager.connect();
@@ -31,5 +30,5 @@ public class UserRepository {
         } catch (SQLException e) {
             System.out.println("Ошибка добавления пользователя в базу данных: " + e.getMessage());
         }
-    }
+    }*/
 }

@@ -58,6 +58,16 @@
             <artifactId>postgresql</artifactId>
             <version>42.2.20</version>
         </dependency>
+        <dependency>
+            <groupId>ma.glasnost.orika</groupId>
+            <artifactId>orika-core</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>3.0.0</version> <!-- Используйте последнюю стабильную версию -->
+        </dependency>
     </dependencies>
 
     <build>
@@ -68,6 +78,10 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
+                    <compilerArgs>
+                        <arg>--add-opens</arg>
+                        <arg>java.base/java.lang=ALL-UNNAMED</arg>
+                    </compilerArgs>
                     <release>${java.version}</release>
                     <annotationProcessorPaths>
                         <path>
