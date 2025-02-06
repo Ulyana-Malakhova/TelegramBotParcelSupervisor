@@ -67,6 +67,7 @@ public abstract class TrackingApiClient {
         httpClient.close();
         return jsonResponse;
     }
+
     /**
      * Получение текущего статуса местоположения посылки
      * @param numberTrack строка-трек номер
