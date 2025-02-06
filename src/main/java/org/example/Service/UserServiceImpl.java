@@ -1,7 +1,5 @@
 package org.example.Service;
 
-import ma.glasnost.orika.MapperFacade;
-import ma.glasnost.orika.impl.DefaultMapperFactory;
 import org.example.Entity.User;
 import org.example.Dto.UserDto;
 import org.example.Repository.UserRepository;
@@ -14,10 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class UserServiceImpl implements UserService{
+public class UserServiceImpl implements ServiceInterface<UserDto>{
     private final UserRepository userRepository;
-    //private final MapperFacade mapperFacade = new DefaultMapperFactory.Builder()
-    //        .build().getMapperFacade();
     private final ModelMapper modelMapper;
     @Autowired
     public UserServiceImpl(UserRepository userRepository) {
@@ -34,9 +30,9 @@ public class UserServiceImpl implements UserService{
         }
         return userDtos;
     }
-    public UserDto save(UserDto userDto) {
+    @Override
+    public void save(UserDto userDto) {
         User userEntity = modelMapper.map(userDto, User.class);
         userRepository.save(userEntity);
-        return userDto;
     }
 }

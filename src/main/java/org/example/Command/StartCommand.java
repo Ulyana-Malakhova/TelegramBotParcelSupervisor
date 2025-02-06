@@ -1,10 +1,9 @@
 package org.example.Command;
 
-import lombok.RequiredArgsConstructor;
 import org.example.Dto.UserDto;
-import org.example.Service.UserService;
 import org.example.Service.UserServiceImpl;
-import org.example.TelegramBot;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -12,17 +11,21 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.util.Collections;
-@RequiredArgsConstructor
+@Component
 public class StartCommand {
-    private final UserService userService;
-
-    public void execute(Update update) {
-        String chatId = update.getMessage().getChatId().toString();
-        // Отправляем сообщение с кнопкой для запроса номера телефона
-        sendPhoneShareMessage(chatId);
+    private final UserServiceImpl userService;
+    @Autowired
+    public StartCommand(UserServiceImpl userService) {
+        this.userService = userService;
     }
 
-    private void sendPhoneShareMessage(String chatId) {
+    public SendMessage execute(Update update) {
+        String chatId = update.getMessage().getChatId().toString();
+        // Отправляем сообщение с кнопкой для запроса номера телефона
+        return sendPhoneShareMessage(chatId);
+    }
+
+    private SendMessage sendPhoneShareMessage(String chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText("Здравствуйте! Пожалуйста, поделитесь своим номером телефона, чтобы продолжить.");
@@ -36,13 +39,11 @@ public class StartCommand {
 
         keyboardMarkup.setKeyboard(Collections.singletonList(row));
         message.setReplyMarkup(keyboardMarkup);
-
-        // Отправляем сообщение через TelegramBot
-        TelegramBot.getInstance().sendMessage(message);
+        return message;
     }
 
-    public UserDto createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) {
+    public void createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) {
         UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, 2, email, password);
-        return userService.save(user);  // Добавляем пользователя в базу данных
+        userService.save(user);  // Добавляем пользователя в базу данных
     }
 }

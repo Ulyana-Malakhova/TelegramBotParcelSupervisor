@@ -10,7 +10,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
-@Data
+@Setter
 @Entity
 @Table(name = "\"User\"", schema = "public")
 public class User {

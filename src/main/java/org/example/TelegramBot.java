@@ -1,33 +1,22 @@
 package org.example;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.example.Command.AboutCommand;
 import org.example.Command.HelpCommand;
 import org.example.Command.StartCommand;
-import org.example.Dto.UserDto;
-import org.example.Service.UserService;
-import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-
-@RequiredArgsConstructor
+@Component
 public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
-    private static TelegramBot instance;
-    private final UserService userService;
     private final AboutCommand aboutCommand = new AboutCommand();
-    private final StartCommand startCommand = new StartCommand(userService);
-
-    public static TelegramBot getInstance() {
-        if (instance == null) {
-            instance = new TelegramBot();
-        }
-        return instance;
+    private final StartCommand startCommand;
+    @Autowired
+    public TelegramBot(StartCommand startCommand) {
+        this.startCommand = startCommand;
     }
 
     @Override
@@ -49,7 +38,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             // Обработка команды /start
             if (userMessage.equals("/start")) {
-                startCommand.execute(update);
+                sendMessage(startCommand.execute(update));
             }
             // Обработка команды /help
             else if (userMessage.equals("/help")) {
