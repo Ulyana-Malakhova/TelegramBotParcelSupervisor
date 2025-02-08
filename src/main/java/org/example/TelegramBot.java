@@ -6,6 +6,7 @@ import org.example.Command.StartCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -72,10 +73,26 @@ public class TelegramBot extends TelegramLongPollingBot {
             userUsername1 = userUsername;
         }
         // Создаем пользователя с номером телефона
-        startCommand.createUserWithPhone(userId, userName, userSurname, userUsername1, phoneNumber, null, null);
-        sendResponse(chatId, "Спасибо за предоставление вашего номера телефона!");
+        boolean newUser = startCommand.createUserWithPhone(userId, userName, userSurname, userUsername1, phoneNumber, null, null);
+        if (newUser){
+            sendResponseAndDeleteKeyboard(chatId, "Спасибо за предоставление вашего номера телефона!");
+            sendResponse(chatId, helpCommand.getHelpMessage());
+        }
+        else {
+            sendResponse(chatId,"Произошла ошибка, пожалуйста попробуйте снова поделиться номером телефона");
+        }
     }
+    private void sendResponseAndDeleteKeyboard(String chatId, String messageText){
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(messageText);
 
+        // Удаляем кнопку
+        ReplyKeyboardRemove keyboardRemove = new ReplyKeyboardRemove();
+        keyboardRemove.setRemoveKeyboard(true);
+        message.setReplyMarkup(keyboardRemove);
+        sendMessage(message);
+    }
     private void sendResponse(String chatId, String messageText) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);

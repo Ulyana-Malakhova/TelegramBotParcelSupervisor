@@ -5,7 +5,10 @@ spring:
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/bot_parcel_supervisor
     username: postgres
-    password: Postgres
+    password: 30032003
     driver-class-name: org.postgresql.Driver
+
+server:
+  port: 8000

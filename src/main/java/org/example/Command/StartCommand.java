@@ -4,6 +4,7 @@ import org.example.Dto.UserDto;
 import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -42,8 +43,15 @@ public class StartCommand {
         return message;
     }
 
-    public void createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) {
+    @Transactional
+    public boolean createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) {
         UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, 2, email, password);
         userService.save(user);  // Добавляем пользователя в базу данных
+        if (userService.get(userId) != null){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
 }

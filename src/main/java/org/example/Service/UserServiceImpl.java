@@ -1,5 +1,6 @@
 package org.example.Service;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.example.Entity.User;
 import org.example.Dto.UserDto;
 import org.example.Repository.UserRepository;
@@ -34,5 +35,17 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
     public void save(UserDto userDto) {
         User userEntity = modelMapper.map(userDto, User.class);
         userRepository.save(userEntity);
+    }
+
+    @Override
+    public UserDto get(Long id){
+        UserDto userDto = null;
+        try {
+            User user = userRepository.getReferenceById(id);
+            userDto = new UserDto(user.getId(), user.getName(),user.getSurname(),user.getUsername(),user.getPhoneNumber(),user.getIdStatus(),user.getEmail(),user.getPassword());
+        } catch (EntityNotFoundException e){
+            System.out.println(e.getMessage());
+        }
+        return userDto;
     }
 }
