@@ -1,4 +1,4 @@
-package org.example.command;
+package org.example.Command;
 
 import org.example.api.PackageLocation;
 import org.example.api.tracking_api.TrackingApiClientBoxberry;

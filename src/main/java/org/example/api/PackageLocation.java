@@ -1,11 +1,18 @@
 package org.example.api;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
  * Класс данных о местоположении
  */
+@Setter
+@Getter
+@NoArgsConstructor
 public class PackageLocation {
     /**
      * Дата получения информации
@@ -23,21 +30,6 @@ public class PackageLocation {
      * Формат вывода даты
      */
     private SimpleDateFormat format = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-
-    public void setDate(Date date) {
-        this.date = date;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
-    public PackageLocation() {
-    }
 
     @Override
     public String toString() {
