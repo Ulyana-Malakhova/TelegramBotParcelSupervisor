@@ -1,12 +1,12 @@
 package org.example.api.tracking_api;
 
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.config.ConnectionConfig;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
-import org.apache.hc.core5.util.Timeout;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
 import org.example.api.PackageLocation;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -15,7 +15,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Абстрактный класс для получения данных с api-запросов почтовых служб
@@ -47,23 +46,27 @@ public abstract class TrackingApiClient {
      * @param numberTrack строка-трек номер
      * @return json-ответ
      * @throws IOException статус ответа не OK, ошибка сети или проблемы с подключением
-     * @throws org.apache.hc.core5.http.ParseException ошибка парсинга HTTP-ответа
      */
-    public JSONObject getParcelTrackingJson(String numberTrack) throws IOException, org.apache.hc.core5.http.ParseException {
+    public JSONObject getParcelTrackingJson(String numberTrack) throws IOException {
         RequestConfig requestConfig = RequestConfig.custom()    //настройка параметров http-запроса
-                .setResponseTimeout(Timeout.ofSeconds(40))
+                .setSocketTimeout(40 * 1000) // таймаут ответа в миллисекундах
+                .setConnectTimeout(60 * 1000) // таймаут соединения в миллисекундах
                 .build();
-        ConnectionConfig connectionConfig = ConnectionConfig.custom() //настройка параметров соединения
-                .setConnectTimeout(60, TimeUnit.SECONDS)
-                .build();
-        BasicHttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager();   //объект поддержки одного активного соединения
-        connectionManager.setConnectionConfig(connectionConfig);
-        HttpGet request = new HttpGet(url + numberTrack);
-        CloseableHttpClient httpClient = HttpClientBuilder.create() //объект выполнения http-запроса
+        // Настройка менеджера соединений
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        CloseableHttpClient httpClient = HttpClients.custom() //объект выполнения http-запроса
                 .setDefaultRequestConfig(requestConfig)
                 .setConnectionManager(connectionManager)
                 .build();
-        JSONObject jsonResponse = httpClient.execute(request, new CustomHttpClientResponseHandler());
+
+        HttpGet request = new HttpGet(url + numberTrack);
+        HttpResponse response = httpClient.execute(request);    // Выполнение запроса
+        int statusCode = response.getStatusLine().getStatusCode();    //проверка статуса ответа
+        if (statusCode != 200) {
+            throw new IOException("HTTP error - "+statusCode);
+        }
+        String jsonResponseString = EntityUtils.toString(response.getEntity()); // Обработка ответа
+        JSONObject jsonResponse = new JSONObject(jsonResponseString);
         httpClient.close();
         return jsonResponse;
     }
@@ -82,7 +85,7 @@ public abstract class TrackingApiClient {
             JSONObject statusObject = statusesArray.getJSONObject(statusesArray.length() - 1);
             parser(packageLocation, statusObject);
             return packageLocation;
-        } catch (IOException | org.apache.hc.core5.http.ParseException ex) {
+        } catch (IOException ex) {
             System.out.println("Ошибка отправки http-запроса: "+ex.getMessage());
             return null;
         } catch (JSONException e) {
@@ -107,7 +110,7 @@ public abstract class TrackingApiClient {
                 parser(packageLocations[j], statusObject);
             }
             return packageLocations;
-        }catch (IOException| org.apache.hc.core5.http.ParseException ex){
+        }catch (IOException ex){
             System.out.println("Ошибка отправки http-запроса: "+ex.getMessage());
             return null;
         }
