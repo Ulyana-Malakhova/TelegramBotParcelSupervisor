@@ -14,6 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
     private final AboutCommand aboutCommand = new AboutCommand();
+    private final TrackingCommand trackingCommand = new TrackingCommand();
     private final StartCommand startCommand;
     @Autowired
     public TelegramBot(StartCommand startCommand) {
@@ -48,7 +49,17 @@ public class TelegramBot extends TelegramLongPollingBot {
             // Обработка команды /about
             else if (userMessage.equals("/about")) {
                 sendResponse(chatId, aboutCommand.getAboutMessage());
-            } else {
+            }   //обработка команд /track и /history
+            else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
+                String[] parts = userMessage.split(" ");
+                if (parts.length > 1) {
+                    if (userMessage.startsWith("/track")) sendResponse(chatId, trackingCommand.getTrackingMessage(parts[1]));
+                    else sendResponse(chatId, trackingCommand.getHistoryMessage(parts[1]));
+                } else {
+                    sendResponse(chatId, "Пожалуйста, укажите номер отслеживания.");
+                }
+            }
+            else {
                 // Логика ответа на другие сообщения
                 String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                 sendResponse(chatId, botResponse);
