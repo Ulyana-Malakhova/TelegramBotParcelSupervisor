@@ -3,6 +3,7 @@ package org.example;
 import org.example.Command.AboutCommand;
 import org.example.Command.HelpCommand;
 import org.example.Command.TrackingCommand;
+import org.example.Dto.UserDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -11,12 +12,17 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.example.Command.StartCommand;
+
+import java.util.HashMap;
+import java.util.Map;
+
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
     private final AboutCommand aboutCommand = new AboutCommand();
     private final TrackingCommand trackingCommand = new TrackingCommand();
     private final StartCommand startCommand;
+    private final Map<Long, String> userQuestions = new HashMap<>();
     @Autowired
     public TelegramBot(StartCommand startCommand) {
         this.startCommand = startCommand;
@@ -31,6 +37,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return "7073195789:AAGYAHgEncvlJ40xZBPWgiuQMXvizDgWdRs";
     }
+    private final String questionAdmin = "Register_Admin";
+    private final String questionEmail = "Register_Email";
 
 
     @Override
@@ -42,6 +50,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             // Обработка команды /start
             if (userMessage.equals("/start")) {
                 sendMessage(startCommand.execute(update));
+                if (!startCommand.isAdministratorRegistered()){
+                    sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
+                            "значение токена телеграм-бота");
+                    userQuestions.put(update.getMessage().getChatId(), questionAdmin);
+                }
             }
             // Обработка команды /help
             else if (userMessage.equals("/help")) {
@@ -58,6 +71,25 @@ public class TelegramBot extends TelegramLongPollingBot {
                     else sendResponse(chatId, trackingCommand.getHistoryMessage(parts[1]));
                 } else {
                     sendResponse(chatId, "Пожалуйста, укажите номер отслеживания.");
+                }
+            }
+            else if (userQuestions.containsKey(update.getMessage().getChatId())){
+                if (userQuestions.get(update.getMessage().getChatId())==questionAdmin){
+                    if (userMessage!=getBotToken()){
+                        sendResponse(chatId, "Токен введен неверно");
+                        userQuestions.remove(update.getMessage().getChatId());
+                    }
+                    else{
+                        sendResponse(chatId, "Введите почту, на которую будет выслан пароль");
+                        userQuestions.remove(update.getMessage().getChatId());
+                        userQuestions.put(update.getMessage().getChatId(), questionEmail);
+                    }
+                }
+                else if (userQuestions.get(update.getMessage().getChatId())==questionEmail){
+                    UserDto userDto = UserDto.builder().id(update.getMessage().getChatId()).email(userMessage).build();
+                    startCommand.createAdminUser(userDto);
+                    sendResponse(chatId, "Пароль отправлен на почту");
+                    userQuestions.remove(update.getMessage().getChatId());
                 }
             }
             else {

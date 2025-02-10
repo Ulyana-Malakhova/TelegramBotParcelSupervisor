@@ -26,7 +26,7 @@ public class User {
     @Column(name = "\"Phone_Number\"")
     private String phoneNumber;
     @Column(name = "\"Id_Status\"")
-    private int idStatus;
+    private Long idStatus;
     @Column(name = "\"Email\"")
     private String email;
     @Column(name = "\"Password\"")

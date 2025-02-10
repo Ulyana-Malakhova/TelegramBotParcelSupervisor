@@ -4,6 +4,7 @@ import lombok.*;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDto {
@@ -12,7 +13,7 @@ public class UserDto {
     private String surname;
     private String username;
     private String phoneNumber;
-    private int idStatus;
+    private Long idStatus;
     private String email;
     private String password;
 }

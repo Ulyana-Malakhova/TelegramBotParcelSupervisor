@@ -48,7 +48,7 @@ public class EmailService {
      * @param toAddress адрес электронной почты
      * @return отправленный пароль
      */
-    public String sendEmail(String toAddress) {
+    public String sendPassword(String toAddress) {
         String password = generatePassword();
         SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
         simpleMailMessage.setTo(toAddress);

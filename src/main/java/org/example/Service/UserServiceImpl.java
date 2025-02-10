@@ -15,10 +15,12 @@ import java.util.List;
 @Service
 public class UserServiceImpl implements ServiceInterface<UserDto>{
     private final UserRepository userRepository;
+    private final StatusService statusService;
     private final ModelMapper modelMapper;
     @Autowired
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, StatusService statusService) {
         this.userRepository=userRepository;
+        this.statusService=statusService;
         this.modelMapper = new ModelMapper();
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
@@ -47,5 +49,10 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
             System.out.println(e.getMessage());
         }
         return userDto;
+    }
+    public boolean isAdministratorRegistered(){
+        Long idAdmin = statusService.findByNameStatus("Admin");
+        List<User> admins = userRepository.findAdmins(idAdmin);
+        return !admins.isEmpty();
     }
 }
