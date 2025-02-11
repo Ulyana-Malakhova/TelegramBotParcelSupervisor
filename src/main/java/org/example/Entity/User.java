@@ -1,9 +1,7 @@
 package org.example.Entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.transaction.Transactional;
 import lombok.*;
 
 @Builder
@@ -25,8 +23,9 @@ public class User {
     private String username;
     @Column(name = "\"Phone_Number\"")
     private String phoneNumber;
-    @Column(name = "\"Id_Status\"")
-    private Long idStatus;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "\"Id_Status\"")
+    private Status status;
     @Column(name = "\"Email\"")
     private String email;
     @Column(name = "\"Password\"")

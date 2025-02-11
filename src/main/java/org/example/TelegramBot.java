@@ -15,6 +15,7 @@ import org.example.Command.StartCommand;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
@@ -50,11 +51,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             // Обработка команды /start
             if (userMessage.equals("/start")) {
                 sendMessage(startCommand.execute(update));
-                if (!startCommand.isAdministratorRegistered()){
-                    sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
-                            "значение токена телеграм-бота");
-                    userQuestions.put(update.getMessage().getChatId(), questionAdmin);
-                }
             }
             // Обработка команды /help
             else if (userMessage.equals("/help")) {
@@ -74,8 +70,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
             else if (userQuestions.containsKey(update.getMessage().getChatId())){
-                if (userQuestions.get(update.getMessage().getChatId())==questionAdmin){
-                    if (userMessage!=getBotToken()){
+                if (userQuestions.get(update.getMessage().getChatId()).equals(questionAdmin)){
+                    if (!userMessage.equals(getBotToken())){
                         sendResponse(chatId, "Токен введен неверно");
                         userQuestions.remove(update.getMessage().getChatId());
                     }
@@ -85,7 +81,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                         userQuestions.put(update.getMessage().getChatId(), questionEmail);
                     }
                 }
-                else if (userQuestions.get(update.getMessage().getChatId())==questionEmail){
+                else if (userQuestions.get(update.getMessage().getChatId()).equals(questionEmail)){
                     UserDto userDto = UserDto.builder().id(update.getMessage().getChatId()).email(userMessage).build();
                     startCommand.createAdminUser(userDto);
                     sendResponse(chatId, "Пароль отправлен на почту");
@@ -121,6 +117,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (newUser){
             sendResponseAndDeleteKeyboard(chatId, "Спасибо за предоставление вашего номера телефона!");
             sendResponse(chatId, helpCommand.getHelpMessage());
+            if (!startCommand.isAdministratorRegistered()){
+                sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
+                        "значение токена телеграм-бота");
+                userQuestions.put(update.getMessage().getChatId(), questionAdmin);
+            }
         }
         else {
             sendResponse(chatId,"Произошла ошибка, пожалуйста попробуйте снова поделиться номером телефона");

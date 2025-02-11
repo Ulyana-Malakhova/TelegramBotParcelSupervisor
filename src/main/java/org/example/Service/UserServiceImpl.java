@@ -1,6 +1,7 @@
 package org.example.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.example.Entity.Status;
 import org.example.Entity.User;
 import org.example.Dto.UserDto;
 import org.example.Repository.UserRepository;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements ServiceInterface<UserDto>{
@@ -29,13 +31,15 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
         List<User> users = userRepository.findAll();
         List<UserDto> userDtos = new ArrayList<>();
         for (User user: users){
-            userDtos.add(new UserDto(user.getId(),user.getName(),user.getSurname(),user.getUsername(),user.getPhoneNumber(),user.getIdStatus(),user.getEmail(),user.getPassword()));
+            userDtos.add(new UserDto(user.getId(),user.getName(),user.getSurname(),user.getUsername(),user.getPhoneNumber(),user.getStatus().getIdStatus(),user.getEmail(),user.getPassword()));
         }
         return userDtos;
     }
     @Override
     public void save(UserDto userDto) {
         User userEntity = modelMapper.map(userDto, User.class);
+        Status idAdmin = statusService.findById(userDto.getIdStatus());
+        userEntity.setStatus(idAdmin);
         userRepository.save(userEntity);
     }
 
@@ -43,16 +47,19 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
     public UserDto get(Long id){
         UserDto userDto = null;
         try {
-            User user = userRepository.getReferenceById(id);
-            userDto = new UserDto(user.getId(), user.getName(),user.getSurname(),user.getUsername(),user.getPhoneNumber(),user.getIdStatus(),user.getEmail(),user.getPassword());
+            Optional<User> user = userRepository.findById(id);
+            if (user.isPresent()) userDto = new UserDto(user.get().getId(),
+                    user.get().getName(),user.get().getSurname(),user.get().getUsername(),
+                    user.get().getPhoneNumber(),user.get().getStatus().getIdStatus(),
+                    user.get().getEmail(),user.get().getPassword());
         } catch (EntityNotFoundException e){
             System.out.println(e.getMessage());
         }
         return userDto;
     }
     public boolean isAdministratorRegistered(){
-        Long idAdmin = statusService.findByNameStatus("Admin");
-        List<User> admins = userRepository.findAdmins(idAdmin);
+        Status idAdmin = statusService.findByNameStatus("Admin");
+        List<User> admins = userRepository.findByStatus(idAdmin);
         return !admins.isEmpty();
     }
 }

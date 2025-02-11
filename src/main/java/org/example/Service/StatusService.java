@@ -17,8 +17,12 @@ public class StatusService {
     public StatusService(StatusRepository statusRepository) {
         this.statusRepository=statusRepository;
     }
-    public Long findByNameStatus(String status){
+    public Status findByNameStatus(String status){
         Optional<Status> statusOptional = statusRepository.findByStatusName(status);
-        return statusOptional.map(Status::getIdStatus).orElse(null);
+        return statusOptional.orElse(null);
+    }
+    public Status findById(Long id){
+        Optional<Status> statusOptional = statusRepository.findById(id);
+        return statusOptional.orElse(null);
     }
 }
