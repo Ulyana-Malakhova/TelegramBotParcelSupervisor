@@ -10,19 +10,27 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Сервис для статуса пользователя
+ */
 @Service
 public class StatusService {
+    /**
+     * Репозиторий для статуса пользователя
+     */
     private final StatusRepository statusRepository;
     @Autowired
     public StatusService(StatusRepository statusRepository) {
         this.statusRepository=statusRepository;
     }
+
+    /**
+     * Поиск статуса по названию
+     * @param status название статуса
+     * @return сущность статуса
+     */
     public Status findByNameStatus(String status){
         Optional<Status> statusOptional = statusRepository.findByStatusName(status);
-        return statusOptional.orElse(null);
-    }
-    public Status findById(Long id){
-        Optional<Status> statusOptional = statusRepository.findById(id);
         return statusOptional.orElse(null);
     }
 }

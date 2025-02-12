@@ -18,6 +18,8 @@ import java.util.Optional;
 public class UserServiceImpl implements ServiceInterface<UserDto>{
     private final UserRepository userRepository;
     private final StatusService statusService;
+    private final String statusUser = "User";
+    private final String statusAdmin = "Admin";
     private final ModelMapper modelMapper;
     @Autowired
     public UserServiceImpl(UserRepository userRepository, StatusService statusService) {
@@ -36,30 +38,71 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
         return userDtos;
     }
     @Override
-    public void save(UserDto userDto) {
+    public void save(UserDto userDto) throws Exception {
         User userEntity = modelMapper.map(userDto, User.class);
-        Status idAdmin = statusService.findById(userDto.getIdStatus());
-        userEntity.setStatus(idAdmin);
-        userRepository.save(userEntity);
+        Status status = getStatus(statusUser);
+        if (status!=null) {
+            userEntity.setStatus(status);
+            userRepository.save(userEntity);
+        }
     }
 
     @Override
-    public UserDto get(Long id){
+    public UserDto get(Long id) {
         UserDto userDto = null;
-        try {
-            Optional<User> user = userRepository.findById(id);
-            if (user.isPresent()) userDto = new UserDto(user.get().getId(),
-                    user.get().getName(),user.get().getSurname(),user.get().getUsername(),
-                    user.get().getPhoneNumber(),user.get().getStatus().getIdStatus(),
-                    user.get().getEmail(),user.get().getPassword());
-        } catch (EntityNotFoundException e){
-            System.out.println(e.getMessage());
-        }
+        Optional<User> user = userRepository.findById(id);
+        if (user.isPresent()) userDto = new UserDto(user.get().getId(), user.get().getName(), user.get().getSurname(),
+                user.get().getUsername(), user.get().getPhoneNumber(), user.get().getStatus().getIdStatus(),
+                user.get().getEmail(), user.get().getPassword());
         return userDto;
     }
-    public boolean isAdministratorRegistered(){
-        Status idAdmin = statusService.findByNameStatus("Admin");
-        List<User> admins = userRepository.findByStatus(idAdmin);
+
+    /**
+     * Проверка, существует ли в БД пользователь с данным id чата
+     * @param id id чата
+     * @return true - пользователь существует, иначе false
+     */
+    public boolean isUserExist(Long id){
+        Optional<User> user = userRepository.findById(id);
+        return user.isPresent();
+    }
+    /**
+     * Проверка, есть ли в БД зарегистрированные администраторы
+     * @return true - администратор есть, иначе - false
+     */
+    public boolean isAdministratorRegistered() throws Exception {
+        Status status = getStatus(statusAdmin);
+        List<User> admins = userRepository.findByStatus(status);
         return !admins.isEmpty();
+    }
+
+    /**
+     * Получение статуса по названию
+     * @param status название статуса
+     * @return сущность статуса
+     * @throws Exception не найдена сущность статуса
+     */
+    public Status getStatus(String status) throws Exception {
+        Status statusEntity = statusService.findByNameStatus(status);
+        if (statusEntity==null) throw new Exception("Не удалось получить статус "+status);
+        return statusEntity;
+    }
+
+    /**
+     * Изменение сущности обычного пользователя на администратора
+     * @param userDto дто пользователя
+     * @param password пароль для доступа к режиму администратора
+     * @throws Exception не найдена сущность статуса
+     */
+    public void updateUserToAdmin(UserDto userDto, String password) throws Exception {
+        Status status = getStatus(statusAdmin);
+        Optional<User> currentUserOptional = userRepository.findById(userDto.getId());
+        if (currentUserOptional.isPresent() && status!=null) {
+            User currentUser = currentUserOptional.get();
+            currentUser.setEmail(userDto.getEmail());
+            currentUser.setPassword(PasswordUtil.hashPassword(password));
+            currentUser.setStatus(status);
+            userRepository.save(currentUser);
+        }
     }
 }

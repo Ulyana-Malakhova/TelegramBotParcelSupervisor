@@ -6,6 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/**
+ * Репозиторий для статуса пользователя
+ */
 @Repository
 public interface StatusRepository extends JpaRepository<Status, Long> {
     Optional<Status> findByStatusName(String status);

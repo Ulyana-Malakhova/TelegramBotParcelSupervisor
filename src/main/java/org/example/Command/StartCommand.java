@@ -16,6 +16,9 @@ import java.util.Collections;
 @Component
 public class StartCommand {
     private final UserServiceImpl userService;
+    /**
+     * Сервис для отправки писем на электронную почту
+     */
     private final EmailService emailService;
     @Autowired
     public StartCommand(UserServiceImpl userService, EmailService emailService) {
@@ -47,24 +50,32 @@ public class StartCommand {
     }
 
     @Transactional
-    public boolean createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) {
+    public boolean createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) throws Exception {
         UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, 2L, email, password);
         userService.save(user);  // Добавляем пользователя в базу данных
-        if (userService.get(userId) != null){
-            return true;
-        }
-        else{
-            return false;
-        }
+        return userService.isUserExist(userId);
     }
-    public boolean isAdministratorRegistered(){
+
+    /**
+     * Проверка, есть ли зарегистрированный администратор
+     * @return true - администратор есть, иначе - false
+     */
+    public boolean isAdministratorRegistered() throws Exception {
         return userService.isAdministratorRegistered();
     }
-    public void createAdminUser(UserDto userDto){
-        UserDto currentUserDto = userService.get(userDto.getId());
-        currentUserDto.setEmail(userDto.getEmail());
-        String password = emailService.sendPassword(userDto.getEmail());
-        currentUserDto.setPassword(password);
-        userService.save(currentUserDto);
+
+    /**
+     * Обновления данных обычного пользователя
+     * @param userDto дто пользователя
+     * @return true - администратор успешно создан, иначе - false
+     * @throws Exception не найдена сущность статуса
+     */
+    public boolean updateAdminUser(UserDto userDto) throws Exception {
+        if (!userService.isUserExist(userDto.getId())) return false;
+        else{
+            String password = emailService.sendPassword(userDto.getEmail());
+            userService.updateUserToAdmin(userDto, password);
+            return true;
+        }
     }
 }

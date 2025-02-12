@@ -44,7 +44,7 @@ public class EmailService {
     public JavaMailSender emailSender;
 
     /**
-     * Метод отправки электронного письма
+     * Метод отправки электронного письма с паролем администратора
      * @param toAddress адрес электронной почты
      * @return отправленный пароль
      */
