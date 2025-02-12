@@ -15,31 +15,36 @@ import org.example.Command.StartCommand;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
+    private final BotProperties botProperties;
     private final HelpCommand helpCommand = new HelpCommand();
     private final AboutCommand aboutCommand = new AboutCommand();
     private final TrackingCommand trackingCommand = new TrackingCommand();
     private final StartCommand startCommand;
     private final Map<Long, String> userQuestions = new HashMap<>();
     @Autowired
-    public TelegramBot(StartCommand startCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties) {
         this.startCommand = startCommand;
+        this.botProperties = botProperties;
     }
 
     @Override
     public String getBotUsername() {
-        return "parcel_supervisor_bot";
+        return botProperties.username;
     }
 
     @Override
     public String getBotToken() {
-        return "7073195789:AAGYAHgEncvlJ40xZBPWgiuQMXvizDgWdRs";
+        return botProperties.token;
     }
     private final String questionAdmin = "Register_Admin";
     private final String questionEmail = "Register_Email";
+    private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
 
 
     @Override
@@ -82,10 +87,16 @@ public class TelegramBot extends TelegramLongPollingBot {
                     }
                 }
                 else if (userQuestions.get(update.getMessage().getChatId()).equals(questionEmail)){
-                    UserDto userDto = UserDto.builder().id(update.getMessage().getChatId()).email(userMessage).build();
-                    startCommand.createAdminUser(userDto);
-                    sendResponse(chatId, "Пароль отправлен на почту");
-                    userQuestions.remove(update.getMessage().getChatId());
+                    if (isValidEmail(userMessage)) {
+                        sendResponse(chatId, "Подождите...");
+                        UserDto userDto = UserDto.builder().id(update.getMessage().getChatId()).email(userMessage).build();
+                        startCommand.createAdminUser(userDto);
+                        sendResponse(chatId, "Пароль отправлен на почту");
+                        userQuestions.remove(update.getMessage().getChatId());
+                    }
+                    else {
+                        sendResponse(chatId, "Неправильный формат электронной почты. Введите почту правильно");
+                    }
                 }
             }
             else {
@@ -96,6 +107,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
         }
+    }
+    private boolean isValidEmail(String email) {
+        Pattern pattern = Pattern.compile(EMAIL_REGEX);
+        Matcher matcher = pattern.matcher(email);
+        return matcher.matches();
     }
 
     private void handleContactUpdate(Update update) {
