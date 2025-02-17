@@ -1,9 +1,12 @@
 package org.example;
 
+import org.apache.commons.lang3.RandomUtils;
 import org.example.Command.AboutCommand;
 import org.example.Command.HelpCommand;
 import org.example.Command.TrackingCommand;
+import org.example.Dto.MessageDto;
 import org.example.Dto.UserDto;
+import org.example.Service.MessageServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -13,6 +16,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.example.Command.StartCommand;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -25,6 +29,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final AboutCommand aboutCommand = new AboutCommand();
     private final TrackingCommand trackingCommand = new TrackingCommand();
     private final StartCommand startCommand;
+    private final MessageServiceImpl messageService;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -42,9 +47,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties,MessageServiceImpl messageService) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
+        this.messageService=messageService;
     }
 
     @Override
@@ -62,6 +68,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
+            long messageDate = update.getMessage().getDate();
+            Long userId = update.getMessage().getFrom().getId();
+            Date dateUserMessage = new Date(messageDate*1000L);
+            MessageDto messageDto=new MessageDto(RandomUtils.nextLong(0L,9999L),userMessage,dateUserMessage,userId);
+            messageService.save(messageDto);
 
             // Обработка команды /start
             if (userMessage.equals("/start")) {

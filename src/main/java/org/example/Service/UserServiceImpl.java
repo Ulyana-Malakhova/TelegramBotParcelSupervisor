@@ -105,4 +105,14 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
             userRepository.save(currentUser);
         }
     }
+
+    /**
+     * Получение пользователя по id
+     * @param id id пользователя
+     * @return сущность пользователя
+     */
+    public User findById(Long id){
+        Optional<User> user = userRepository.findById(id);
+        return user.orElse(null);
+    }
 }
