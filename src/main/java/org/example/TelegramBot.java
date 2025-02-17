@@ -1,8 +1,6 @@
 package org.example;
 
-import org.example.Command.AboutCommand;
-import org.example.Command.HelpCommand;
-import org.example.Command.TrackingCommand;
+import org.example.Command.*;
 import org.example.Dto.UserDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -11,7 +9,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.example.Command.StartCommand;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +22,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final AboutCommand aboutCommand = new AboutCommand();
     private final TrackingCommand trackingCommand = new TrackingCommand();
     private final StartCommand startCommand;
+    private final PackageCommand packageCommand;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -42,9 +40,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, PackageCommand packageCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
+        this.packageCommand = packageCommand;
     }
 
     @Override
@@ -83,6 +82,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } else {
                     sendResponse(chatId, "Пожалуйста, укажите номер отслеживания.");
                 }
+            }
+            else if (userMessage.equals("/saved_parcels")){
+                sendResponse(chatId, packageCommand.getNamesTrackNumbers(update.getMessage().getChatId()));
             }
             else if (userQuestions.containsKey(update.getMessage().getChatId())){   //если есть вопрос, на который бот ожидает ответ
                 if (userQuestions.get(update.getMessage().getChatId()).equals(questionToken)){  //если ожидается токен
