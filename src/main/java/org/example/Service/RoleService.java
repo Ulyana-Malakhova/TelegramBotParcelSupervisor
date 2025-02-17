@@ -21,7 +21,7 @@ public class RoleService {
      * @return сущность роли
      */
     public Role findByNameRole(String role){
-        Optional<Role> roleOptional = roleRepository.findByRoleName(role);
+        Optional<Role> roleOptional = roleRepository.findByNameRole(role);
         return roleOptional.orElse(null);
     }
 }

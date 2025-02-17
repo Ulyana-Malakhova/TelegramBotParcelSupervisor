@@ -46,15 +46,10 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
             userRepository.save(userEntity);
         }
     }
-
-    @Override
-    public UserDto get(Long id) {
-        UserDto userDto = null;
+    public User get(Long id) throws Exception {
         Optional<User> user = userRepository.findById(id);
-        if (user.isPresent()) userDto = new UserDto(user.get().getId(), user.get().getName(), user.get().getSurname(),
-                user.get().getUsername(), user.get().getPhoneNumber(), user.get().getStatus().getIdStatus(),
-                user.get().getEmail(), user.get().getPassword());
-        return userDto;
+        if (user.isPresent()) return user.get();
+        else throw new Exception("Пользователен с данным id не найден");
     }
 
     /**

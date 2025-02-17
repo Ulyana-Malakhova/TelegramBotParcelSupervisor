@@ -26,9 +26,12 @@ public class Package {
     @Column(name = "\"Receipt_Date\"")
     private LocalDate receiptDate;
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "\"Id\"")
     private User userEntity;
     @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "\"Id_Role\"")
     private Role roleEntity;
     @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "\"Id_Tracking_Status\"")
     private TrackingStatus trackingStatusEntity;
 }
