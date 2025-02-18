@@ -17,12 +17,12 @@ import java.util.Optional;
 @Service
 public class UserServiceImpl implements ServiceInterface<UserDto>{
     private final UserRepository userRepository;
-    private final StatusService statusService;
+    private final StatusServiceImpl statusService;
     private final String statusUser = "User";
     private final String statusAdmin = "Admin";
     private final ModelMapper modelMapper;
     @Autowired
-    public UserServiceImpl(UserRepository userRepository, StatusService statusService) {
+    public UserServiceImpl(UserRepository userRepository, StatusServiceImpl statusService) {
         this.userRepository=userRepository;
         this.statusService=statusService;
         this.modelMapper = new ModelMapper();
@@ -46,7 +46,16 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
             userRepository.save(userEntity);
         }
     }
-    public User get(Long id) throws Exception {
+    @Override
+    public UserDto get(Long id) {
+        UserDto userDto = null;
+        Optional<User> user = userRepository.findById(id);
+        if (user.isPresent()) userDto = new UserDto(user.get().getId(), user.get().getName(), user.get().getSurname(),
+                user.get().getUsername(), user.get().getPhoneNumber(), user.get().getStatus().getIdStatus(),
+                user.get().getEmail(), user.get().getPassword());
+        return userDto;
+    }
+    public User getEntity(Long id) throws Exception {
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) return user.get();
         else throw new Exception("Пользователен с данным id не найден");
@@ -78,7 +87,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
      * @throws Exception не найдена сущность статуса
      */
     public Status getStatus(String status) throws Exception {
-        Status statusEntity = statusService.findByNameStatus(status);
+        Status statusEntity = statusService.findByName(status);
         if (statusEntity==null) throw new Exception("Не удалось получить статус "+status);
         return statusEntity;
     }

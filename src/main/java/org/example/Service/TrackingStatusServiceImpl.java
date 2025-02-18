@@ -9,20 +9,21 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-public class TrackingStatusService {
+public class TrackingStatusServiceImpl implements NameServiceInterface<TrackingStatus>{
     private final TrackingStatusRepository trackingStatusRepository;
     @Autowired
-    public TrackingStatusService(TrackingStatusRepository trackingStatusRepository) {
+    public TrackingStatusServiceImpl(TrackingStatusRepository trackingStatusRepository) {
         this.trackingStatusRepository = trackingStatusRepository;
     }
     /**
      * Поиск статуса трека по названию
-     * @param trackingStatus название статуса
+     * @param name название статуса
      * @return сущность статуса
      */
-    public TrackingStatus findByNameTrackingStatus(String trackingStatus){
+    @Override
+    public TrackingStatus findByName(String name) {
         Optional<TrackingStatus> trackingStatusOptional =
-                trackingStatusRepository.findByNameTrackingStatus(trackingStatus);
+                trackingStatusRepository.findByNameTrackingStatus(name);
         return trackingStatusOptional.orElse(null);
     }
 }

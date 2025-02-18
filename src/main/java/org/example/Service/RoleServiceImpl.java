@@ -9,19 +9,23 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-public class RoleService {
+public class RoleServiceImpl implements NameServiceInterface<Role> {
     private final RoleRepository roleRepository;
+
     @Autowired
-    public RoleService(RoleRepository roleRepository) {
+    public RoleServiceImpl(RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
     }
+
     /**
      * Поиск роли по названию
-     * @param role название роли
+     *
+     * @param name название роли
      * @return сущность роли
      */
-    public Role findByNameRole(String role){
-        Optional<Role> roleOptional = roleRepository.findByNameRole(role);
+    @Override
+    public Role findByName(String name) {
+        Optional<Role> roleOptional = roleRepository.findByNameRole(name);
         return roleOptional.orElse(null);
     }
 }

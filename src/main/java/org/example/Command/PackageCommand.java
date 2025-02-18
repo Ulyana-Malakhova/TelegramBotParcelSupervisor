@@ -1,7 +1,7 @@
 package org.example.Command;
 
 import org.example.Dto.PackageDto;
-import org.example.Service.PackageService;
+import org.example.Service.PackageServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -9,9 +9,9 @@ import java.util.List;
 
 @Component
 public class PackageCommand {
-    private final PackageService packageService;
+    private final PackageServiceImpl packageService;
     @Autowired
-    public PackageCommand(PackageService packageService) {
+    public PackageCommand(PackageServiceImpl packageService) {
         this.packageService = packageService;
     }
 

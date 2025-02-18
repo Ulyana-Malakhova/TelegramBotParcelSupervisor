@@ -16,14 +16,15 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class PackageService {
+public class PackageServiceImpl implements ServiceInterface<PackageDto> {
     private final PackageRepository packageRepository;
-    private final RoleService roleService;
-    private final TrackingStatusService trackingStatusService;
+    private final RoleServiceImpl roleService;
+    private final TrackingStatusServiceImpl trackingStatusService;
     private final UserServiceImpl userService;
     private final ModelMapper modelMapper;
     @Autowired
-    public PackageService(PackageRepository packageRepository, RoleService roleService, TrackingStatusService trackingStatusService, UserServiceImpl userService) {
+    public PackageServiceImpl(PackageRepository packageRepository, RoleServiceImpl roleService,
+                          TrackingStatusServiceImpl trackingStatusService, UserServiceImpl userService) {
         this.packageRepository = packageRepository;
         this.roleService = roleService;
         this.trackingStatusService = trackingStatusService;
@@ -53,12 +54,22 @@ public class PackageService {
                 packageDto.getNamePackage());
         if (packageOptional.isPresent()) throw new Exception("Уже существует отправление с данным именем");
         Package packageEntity = modelMapper.map(packageDto, Package.class);
-        Role role = roleService.findByNameRole(packageDto.getNameRole());
-        TrackingStatus trackingStatus = trackingStatusService.findByNameTrackingStatus(packageDto.getNameTrackingStatus());
-        User user = userService.get(packageDto.getIdUser());
+        Role role = roleService.findByName(packageDto.getNameRole());
+        TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
+        User user = userService.getEntity(packageDto.getIdUser());
         packageEntity.setRoleEntity(role);
         packageEntity.setUserEntity(user);
         packageEntity.setTrackingStatusEntity(trackingStatus);
         packageRepository.save(packageEntity);
+    }
+
+    @Override
+    public void save(PackageDto Dto) throws Exception {
+    }
+
+    @Override
+    public PackageDto get(Long id) throws Exception {
+        //посмотреть, будет ли использоваться
+        return null;
     }
 }
