@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -22,6 +23,8 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
     private final TrackingStatusServiceImpl trackingStatusService;
     private final UserServiceImpl userService;
     private final ModelMapper modelMapper;
+    private final String tracked = "Отслеживается";
+    private final String notTracked = "Не отслеживается";
     @Autowired
     public PackageServiceImpl(PackageRepository packageRepository, RoleServiceImpl roleService,
                           TrackingStatusServiceImpl trackingStatusService, UserServiceImpl userService) {
@@ -47,7 +50,15 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
     public void delete(Long userId, String name) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name);
         if (packageOptional.isEmpty()) throw new Exception("Отправление с данным именем не найдено");
-        packageRepository.deleteByIdAndName(userId, name);
+        Package packageEntity = packageOptional.get();
+        TrackingStatus trackingStatus = trackingStatusService.findByName(tracked);
+        if (!Objects.equals(packageEntity.getTrackingStatusEntity().getIdTrackingStatus(),
+                trackingStatus.getIdTrackingStatus()))
+            packageRepository.deleteByIdAndName(userId, name);
+        else {
+            packageEntity.setNamePackage(null);
+            packageRepository.save(packageEntity);
+        }
     }
     public void addName(PackageDto packageDto) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(packageDto.getIdUser(),
@@ -65,6 +76,7 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
 
     @Override
     public void save(PackageDto Dto) throws Exception {
+        //посмотреть, будет ли использоваться
     }
 
     @Override

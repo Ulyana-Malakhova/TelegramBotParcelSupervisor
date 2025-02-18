@@ -1,5 +1,6 @@
 package org.example.Repository;
 
+import jakarta.transaction.Transactional;
 import org.example.Entity.Package;
 import org.example.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,7 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
     @Query("SELECT p FROM Package p WHERE p.userEntity.id = :id")
     List<Package> findByUserIdEntity(@Param("id") Long id);
     @Modifying
+    @Transactional
     @Query("DELETE FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :id")
     void deleteByIdAndName(@Param("id") Long id, @Param("name") String name);
     @Query("SELECT p FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :userId")

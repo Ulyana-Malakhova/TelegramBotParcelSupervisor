@@ -18,8 +18,8 @@ public class PackageCommand {
     public void addNameTrackNumber(){
 
     }
-    public void deleteNameTrackNumber(){
-
+    public void deleteNameTrackNumber(Long userId, String name) throws Exception {
+        packageService.delete(userId, name);
     }
     public String getNamesTrackNumbers(Long userId){
         List<PackageDto> packageDtos = packageService.findByUser(userId);

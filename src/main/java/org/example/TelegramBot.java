@@ -86,6 +86,20 @@ public class TelegramBot extends TelegramLongPollingBot {
             else if (userMessage.equals("/saved_parcels")){
                 sendResponse(chatId, packageCommand.getNamesTrackNumbers(update.getMessage().getChatId()));
             }
+            else if (userMessage.startsWith("/delete_name")){
+                int spaceIndex = userMessage.indexOf(" ");
+                if (spaceIndex != -1) {
+                    try {
+                        packageCommand.deleteNameTrackNumber(update.getMessage().getChatId(), userMessage.substring(spaceIndex + 1));
+                        sendResponse(chatId, "Имя удалено");
+                    }catch (Exception e){
+                        sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
+                    }
+                }
+                else {
+                    sendResponse(chatId, "Пожалуйста, укажите удаляемое имя.");
+                }
+            }
             else if (userQuestions.containsKey(update.getMessage().getChatId())){   //если есть вопрос, на который бот ожидает ответ
                 if (userQuestions.get(update.getMessage().getChatId()).equals(questionToken)){  //если ожидается токен
                     if (!userMessage.equals(getBotToken())){    //и токен введен неверно
