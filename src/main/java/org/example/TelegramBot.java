@@ -1,16 +1,22 @@
 package org.example;
 
 import org.example.Command.*;
+import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +33,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
     private final Map<Long, String> userQuestions = new HashMap<>();
+    private final Map<Long, PackageDto> userPackage = new HashMap<>();
     /**
      * Вопрос-ожидание токена
      */
@@ -35,6 +42,13 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Вопрос-ожидание электронной почты
      */
     private final String questionEmail = "Register_Email";
+    private final String questionNotification = "Вы хотели бы получать уведомления по этой посылке?";
+    private final String answerYes = "Да";
+    private final String answerNo = "Нет";
+    private final String questionRole = "Для учета статистики, пожалуйста, укажите, " +
+            "являетесь вы отправителем или получателем этой посылки";
+    private final String answerSender = "Отправитель";
+    private final String answerRecipient = "Получатель";
     /**
      * Регулярное выражение для проверки почты
      */
@@ -100,6 +114,25 @@ public class TelegramBot extends TelegramLongPollingBot {
                     sendResponse(chatId, "Пожалуйста, укажите удаляемое имя.");
                 }
             }
+            else if (userMessage.startsWith("/add_name")){
+                int spaceIndex = userMessage.indexOf(" ");
+                if (spaceIndex != -1) {
+                    String trackName = userMessage.substring(spaceIndex + 1);
+                    spaceIndex = trackName.indexOf(" ");
+                    if (spaceIndex!=-1 &&
+                            trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex))!=null){
+                        PackageDto packageDto = PackageDto.builder().idUser(update.getMessage().getChatId()).
+                                namePackage(trackName.substring(spaceIndex+1))
+                                .trackNumber(trackName.substring(0, spaceIndex)).build();
+                        userPackage.put(update.getMessage().getChatId(), packageDto);
+                        sendQuestion(update.getMessage().getChatId(), questionNotification, answerYes, answerNo);
+                    }
+                    else sendResponse(chatId, "Пожалуйста, укажите правильный трек-номер и имя для него.");
+                }
+                else {
+                    sendResponse(chatId, "Пожалуйста, укажите трек-номер и имя.");
+                }
+            }
             else if (userQuestions.containsKey(update.getMessage().getChatId())){   //если есть вопрос, на который бот ожидает ответ
                 if (userQuestions.get(update.getMessage().getChatId()).equals(questionToken)){  //если ожидается токен
                     if (!userMessage.equals(getBotToken())){    //и токен введен неверно
@@ -128,6 +161,28 @@ public class TelegramBot extends TelegramLongPollingBot {
                     }
                     else {
                         sendResponse(chatId, "Неправильный формат электронной почты. Введите почту правильно");
+                    }
+                }
+            }
+            else if (userPackage.containsKey(update.getMessage().getChatId())){
+                PackageDto packageDto = userPackage.get(update.getMessage().getChatId());
+                if (packageDto.getNameTrackingStatus()==null){
+                    if (userMessage.equals(answerYes)) packageDto.setNameTrackingStatus("Отслеживается");
+                    if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus("Не отслеживается");
+                    if (packageDto.getNameTrackingStatus()!=null){
+                        userPackage.put(update.getMessage().getChatId(), packageDto);
+                        sendQuestion(update.getMessage().getChatId(), questionRole, answerSender, answerRecipient);
+                    }
+                }
+                else if (packageDto.getNameRole()==null && userMessage.equals(answerSender) ||
+                            userMessage.equals(answerRecipient)) {
+                    packageDto.setNameRole(userMessage);
+                    try {
+                        packageCommand.addNameTrackNumber(packageDto);
+                        userPackage.remove(update.getMessage().getChatId());
+                        sendResponse(chatId,"Имя сохранено.");
+                    } catch (Exception e) {
+                        sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
                     }
                 }
             }
@@ -205,5 +260,22 @@ public class TelegramBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+    }
+    private void sendQuestion(long chatId, String question, String firstAnswer, String secondAnswer){
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(question);
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setSelective(true);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(true);
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton(firstAnswer));
+        row.add(new KeyboardButton(secondAnswer));
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        message.setReplyMarkup(keyboardMarkup);
+        sendMessage(message);
     }
 }

@@ -15,8 +15,8 @@ public class PackageCommand {
         this.packageService = packageService;
     }
 
-    public void addNameTrackNumber(){
-
+    public void addNameTrackNumber(PackageDto packageDto) throws Exception {
+        packageService.addName(packageDto);
     }
     public void deleteNameTrackNumber(Long userId, String name) throws Exception {
         packageService.delete(userId, name);

@@ -24,7 +24,6 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
     private final UserServiceImpl userService;
     private final ModelMapper modelMapper;
     private final String tracked = "Отслеживается";
-    private final String notTracked = "Не отслеживается";
     @Autowired
     public PackageServiceImpl(PackageRepository packageRepository, RoleServiceImpl roleService,
                           TrackingStatusServiceImpl trackingStatusService, UserServiceImpl userService) {
