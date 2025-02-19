@@ -89,12 +89,15 @@ public class TelegramBot extends TelegramLongPollingBot {
                 sendResponse(chatId, aboutCommand.getAboutMessage());
             }   //обработка команд /track и /history
             else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
-                String[] parts = userMessage.split(" ");
-                if (parts.length > 1) {
-                    if (userMessage.startsWith("/track")) sendResponse(chatId, trackingCommand.getTrackingMessage(parts[1]));
-                    else sendResponse(chatId, trackingCommand.getHistoryMessage(parts[1]));
+                int spaceIndex = userMessage.indexOf(" ");
+                if (spaceIndex != -1) {
+                    String track = userMessage.substring(spaceIndex + 1);
+                    String receivedNumber = packageCommand.findByName(update.getMessage().getChatId(), track);
+                    if (receivedNumber!=null) track = receivedNumber;
+                    if (userMessage.startsWith("/track")) sendResponse(chatId, trackingCommand.getTrackingMessage(track));
+                    else sendResponse(chatId, trackingCommand.getHistoryMessage(track));
                 } else {
-                    sendResponse(chatId, "Пожалуйста, укажите номер отслеживания.");
+                    sendResponse(chatId, "Пожалуйста, укажите номер отслеживания или существующее имя.");
                 }
             }
             else if (userMessage.equals("/saved_parcels")){

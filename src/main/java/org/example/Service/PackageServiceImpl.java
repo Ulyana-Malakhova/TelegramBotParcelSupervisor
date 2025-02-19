@@ -47,13 +47,13 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         return packageDtos;
     }
     public void delete(Long userId, String name) throws Exception {
-        Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name);
+        Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name.toLowerCase());
         if (packageOptional.isEmpty()) throw new Exception("Отправление с данным именем не найдено");
         Package packageEntity = packageOptional.get();
         TrackingStatus trackingStatus = trackingStatusService.findByName(tracked);
         if (!Objects.equals(packageEntity.getTrackingStatusEntity().getIdTrackingStatus(),
                 trackingStatus.getIdTrackingStatus()))
-            packageRepository.deleteByIdAndName(userId, name);
+            packageRepository.deleteByIdAndName(userId, name.toLowerCase());
         else {
             packageEntity.setNamePackage(null);
             packageRepository.save(packageEntity);
@@ -71,6 +71,11 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         packageEntity.setUserEntity(user);
         packageEntity.setTrackingStatusEntity(trackingStatus);
         packageRepository.save(packageEntity);
+    }
+    public String findByName(Long userId, String name){
+        Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId,
+                name.toLowerCase());
+        return packageOptional.map(Package::getTrackNumber).orElse(null);
     }
 
     @Override

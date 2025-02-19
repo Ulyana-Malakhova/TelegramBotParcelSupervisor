@@ -32,4 +32,7 @@ public class PackageCommand {
         }
         return answer.toString();
     }
+    public String findByName(Long userId, String name){
+        return packageService.findByName(userId, name);
+    }
 }
