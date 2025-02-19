@@ -22,4 +22,6 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
     void deleteByIdAndName(@Param("id") Long id, @Param("name") String name);
     @Query("SELECT p FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :userId")
     Optional<Package> findByNamePackageAndUserId(@Param("userId") Long userId, @Param("name") String name);
+    @Query("SELECT p FROM Package p WHERE p.trackNumber = :track AND p.userEntity.id = :userId")
+    Optional<Package> findByTrackNumberAndUserId(@Param("userId") Long userId, @Param("track") String track);
 }

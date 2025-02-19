@@ -47,13 +47,13 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         return packageDtos;
     }
     public void delete(Long userId, String name) throws Exception {
-        Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name.toLowerCase());
+        Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name);
         if (packageOptional.isEmpty()) throw new Exception("Отправление с данным именем не найдено");
         Package packageEntity = packageOptional.get();
         TrackingStatus trackingStatus = trackingStatusService.findByName(tracked);
         if (!Objects.equals(packageEntity.getTrackingStatusEntity().getIdTrackingStatus(),
                 trackingStatus.getIdTrackingStatus()))
-            packageRepository.deleteByIdAndName(userId, name.toLowerCase());
+            packageRepository.deleteByIdAndName(userId, name);
         else {
             packageEntity.setNamePackage(null);
             packageRepository.save(packageEntity);
@@ -74,8 +74,21 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
     }
     public String findByName(Long userId, String name){
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId,
-                name.toLowerCase());
+                name);
         return packageOptional.map(Package::getTrackNumber).orElse(null);
+    }
+    public PackageDto findByTrack(Long userId, String track){
+        Optional<Package> packageOptional = packageRepository.findByTrackNumberAndUserId(userId,
+                track);
+        if (packageOptional.isEmpty()) return null;
+        else{
+            Package packageEntity = packageOptional.get();
+            PackageDto packageDto = modelMapper.map(packageEntity, PackageDto.class);
+            packageDto.setNameRole(packageEntity.getRoleEntity().getNameRole());
+            packageDto.setNameTrackingStatus(packageEntity.getTrackingStatusEntity().getNameTrackingStatus());
+            packageDto.setIdUser(packageEntity.getUserEntity().getId());
+            return packageDto;
+        }
     }
 
     @Override

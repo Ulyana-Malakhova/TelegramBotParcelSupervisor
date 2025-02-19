@@ -35,4 +35,7 @@ public class PackageCommand {
     public String findByName(Long userId, String name){
         return packageService.findByName(userId, name);
     }
+    public PackageDto findByTrack(Long userId, String track){
+        return packageService.findByTrack(userId, track);
+    }
 }

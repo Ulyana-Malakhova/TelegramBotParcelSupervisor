@@ -107,7 +107,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 int spaceIndex = userMessage.indexOf(" ");
                 if (spaceIndex != -1) {
                     try {
-                        packageCommand.deleteNameTrackNumber(update.getMessage().getChatId(), userMessage.substring(spaceIndex + 1));
+                        packageCommand.deleteNameTrackNumber(update.getMessage().getChatId(), userMessage.substring(spaceIndex + 1).toLowerCase());
                         sendResponse(chatId, "Имя удалено");
                     }catch (Exception e){
                         sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
@@ -122,13 +122,31 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (spaceIndex != -1) {
                     String trackName = userMessage.substring(spaceIndex + 1);
                     spaceIndex = trackName.indexOf(" ");
-                    if (spaceIndex!=-1 &&
-                            trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex))!=null){
-                        PackageDto packageDto = PackageDto.builder().idUser(update.getMessage().getChatId()).
-                                namePackage(trackName.substring(spaceIndex+1))
-                                .trackNumber(trackName.substring(0, spaceIndex)).build();
-                        userPackage.put(update.getMessage().getChatId(), packageDto);
-                        sendQuestion(update.getMessage().getChatId(), questionNotification, answerYes, answerNo);
+                    if (spaceIndex!=-1 && trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex))!=null){
+                        if (packageCommand.findByName(update.getMessage().getChatId(),
+                                trackName.substring(spaceIndex+1).toLowerCase())!=null)
+                            sendResponse(chatId, "Такое имя посылки уже создано");
+                        else {
+                            PackageDto packageDto = packageCommand.findByTrack(update.getMessage().getChatId(),
+                                    trackName.substring(0, spaceIndex));
+                            if (packageDto!=null){
+                                packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
+                                try {
+                                    packageCommand.addNameTrackNumber(packageDto);
+                                    sendResponse(chatId,"Имя сохранено.");
+                                } catch (Exception e) {
+                                    sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
+                                }
+
+                            }
+                            else {
+                                packageDto = PackageDto.builder().idUser(update.getMessage().getChatId()).
+                                        namePackage(trackName.substring(spaceIndex + 1).toLowerCase())
+                                        .trackNumber(trackName.substring(0, spaceIndex)).build();
+                                userPackage.put(update.getMessage().getChatId(), packageDto);
+                                sendQuestion(update.getMessage().getChatId(), questionNotification, answerYes, answerNo);
+                            }
+                        }
                     }
                     else sendResponse(chatId, "Пожалуйста, укажите правильный трек-номер и имя для него.");
                 }
