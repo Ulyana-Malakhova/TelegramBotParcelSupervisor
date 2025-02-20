@@ -1,6 +1,5 @@
 package org.example.Service;
 
-import jakarta.persistence.EntityNotFoundException;
 import org.example.Entity.Status;
 import org.example.Entity.User;
 import org.example.Dto.UserDto;

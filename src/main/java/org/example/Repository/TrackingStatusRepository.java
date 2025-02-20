@@ -6,7 +6,15 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/**
+ * Репозиторий для статуса отслеживания
+ */
 @Repository
 public interface TrackingStatusRepository extends JpaRepository<TrackingStatus, Long> {
+    /**
+     * Получение сущности статуса отслеживания по названию
+     * @param trackingStatus название статуса отслеживания
+     * @return сущность статуса
+     */
     Optional<TrackingStatus> findByNameTrackingStatus(String trackingStatus);
 }

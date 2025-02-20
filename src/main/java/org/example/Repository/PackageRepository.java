@@ -12,16 +12,44 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Репозиторий для посылок
+ */
 @Repository
 public interface PackageRepository extends JpaRepository<Package, Long> {
+    /**
+     * Получение всех сохраненных пользователем посылок
+     * @param id id пользователя
+     * @return список сущностей посылок пользователя
+     */
     @Query("SELECT p FROM Package p WHERE p.userEntity.id = :id")
     List<Package> findByUserIdEntity(@Param("id") Long id);
+
+    /**
+     * Удаление имени посылки у пользователя
+     * @param id id пользователя
+     * @param name имя посылки
+     */
     @Modifying
     @Transactional
     @Query("DELETE FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :id")
     void deleteByIdAndName(@Param("id") Long id, @Param("name") String name);
+
+    /**
+     * Получение посылки по id пользователя и имени
+     * @param userId id пользователя
+     * @param name имя посылки
+     * @return сущность посылки
+     */
     @Query("SELECT p FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :userId")
     Optional<Package> findByNamePackageAndUserId(@Param("userId") Long userId, @Param("name") String name);
+
+    /**
+     * Получение посылки по id пользователя и трек-номеру
+     * @param userId id пользователя
+     * @param track трек-номер посылки
+     * @return сущность посылки
+     */
     @Query("SELECT p FROM Package p WHERE p.trackNumber = :track AND p.userEntity.id = :userId")
     Optional<Package> findByTrackNumberAndUserId(@Param("userId") Long userId, @Param("track") String track);
 }

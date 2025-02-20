@@ -33,6 +33,9 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
     private final Map<Long, String> userQuestions = new HashMap<>();
+    /**
+     * Мапа для сохранения промежуточной информации о посылках
+     */
     private final Map<Long, PackageDto> userPackage = new HashMap<>();
     /**
      * Вопрос-ожидание токена
@@ -42,12 +45,30 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Вопрос-ожидание электронной почты
      */
     private final String questionEmail = "Register_Email";
+    /**
+     * Вопрос о получении уведомлений
+     */
     private final String questionNotification = "Вы хотели бы получать уведомления по этой посылке?";
+    /**
+     * Утвердительный ответ
+     */
     private final String answerYes = "Да";
+    /**
+     * Отрицательный ответ
+     */
     private final String answerNo = "Нет";
+    /**
+     * Вопрос о роли пользователя в контексте отправления
+     */
     private final String questionRole = "Для учета статистики, пожалуйста, укажите, " +
             "являетесь вы отправителем или получателем этой посылки";
+    /**
+     * Ответ - роль отправителя
+     */
     private final String answerSender = "Отправитель";
+    /**
+     * Ответ - роль получателя
+     */
     private final String answerRecipient = "Получатель";
     /**
      * Регулярное выражение для проверки почты
@@ -73,144 +94,41 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
+            Long id = update.getMessage().getChatId();
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
-
-            // Обработка команды /start
-            if (userMessage.equals("/start")) {
-                sendMessage(startCommand.execute(update));
-            }
-            // Обработка команды /help
-            else if (userMessage.equals("/help")) {
-                sendResponse(chatId, helpCommand.getHelpMessage());
-            }
-            // Обработка команды /about
-            else if (userMessage.equals("/about")) {
-                sendResponse(chatId, aboutCommand.getAboutMessage());
-            }   //обработка команд /track и /history
-            else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
-                int spaceIndex = userMessage.indexOf(" ");
-                if (spaceIndex != -1) {
-                    String track = userMessage.substring(spaceIndex + 1);
-                    String receivedNumber = packageCommand.findByName(update.getMessage().getChatId(), track);
-                    if (receivedNumber!=null) track = receivedNumber;
-                    if (userMessage.startsWith("/track")) sendResponse(chatId, trackingCommand.getTrackingMessage(track));
-                    else sendResponse(chatId, trackingCommand.getHistoryMessage(track));
+            try {
+                // Обработка команды /start
+                if (userMessage.equals("/start")) {
+                    sendMessage(startCommand.execute(update));
+                }
+                // Обработка команды /help
+                else if (userMessage.equals("/help")) {
+                    sendResponse(chatId, helpCommand.getHelpMessage());
+                }
+                // Обработка команды /about
+                else if (userMessage.equals("/about")) {
+                    sendResponse(chatId, aboutCommand.getAboutMessage());
+                }   //обработка команд /track и /history
+                else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
+                    processingTrack(userMessage, id);
+                } else if (userMessage.equals("/saved_parcels")) {
+                    sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
+                } else if (userMessage.startsWith("/delete_name")) {
+                    processingDeleteName(userMessage, id);
+                } else if (userMessage.startsWith("/add_name")) {
+                    processingAddName(userMessage, id);
+                } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
+                    processingQuestion(userMessage, id);
+                } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
+                    processingPackage(userMessage, id);
                 } else {
-                    sendResponse(chatId, "Пожалуйста, укажите номер отслеживания или существующее имя.");
+                    // Логика ответа на другие сообщения
+                    String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
+                    sendResponse(chatId, botResponse);
                 }
-            }
-            else if (userMessage.equals("/saved_parcels")){
-                sendResponse(chatId, packageCommand.getNamesTrackNumbers(update.getMessage().getChatId()));
-            }
-            else if (userMessage.startsWith("/delete_name")){
-                int spaceIndex = userMessage.indexOf(" ");
-                if (spaceIndex != -1) {
-                    try {
-                        packageCommand.deleteNameTrackNumber(update.getMessage().getChatId(), userMessage.substring(spaceIndex + 1).toLowerCase());
-                        sendResponse(chatId, "Имя удалено");
-                    }catch (Exception e){
-                        sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
-                    }
-                }
-                else {
-                    sendResponse(chatId, "Пожалуйста, укажите удаляемое имя.");
-                }
-            }
-            else if (userMessage.startsWith("/add_name")){
-                int spaceIndex = userMessage.indexOf(" ");
-                if (spaceIndex != -1) {
-                    String trackName = userMessage.substring(spaceIndex + 1);
-                    spaceIndex = trackName.indexOf(" ");
-                    if (spaceIndex!=-1 && trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex))!=null){
-                        if (packageCommand.findByName(update.getMessage().getChatId(),
-                                trackName.substring(spaceIndex+1).toLowerCase())!=null)
-                            sendResponse(chatId, "Такое имя посылки уже создано");
-                        else {
-                            PackageDto packageDto = packageCommand.findByTrack(update.getMessage().getChatId(),
-                                    trackName.substring(0, spaceIndex));
-                            if (packageDto!=null){
-                                packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
-                                try {
-                                    packageCommand.addNameTrackNumber(packageDto);
-                                    sendResponse(chatId,"Имя сохранено.");
-                                } catch (Exception e) {
-                                    sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
-                                }
-
-                            }
-                            else {
-                                packageDto = PackageDto.builder().idUser(update.getMessage().getChatId()).
-                                        namePackage(trackName.substring(spaceIndex + 1).toLowerCase())
-                                        .trackNumber(trackName.substring(0, spaceIndex)).build();
-                                userPackage.put(update.getMessage().getChatId(), packageDto);
-                                sendQuestion(update.getMessage().getChatId(), questionNotification, answerYes, answerNo);
-                            }
-                        }
-                    }
-                    else sendResponse(chatId, "Пожалуйста, укажите правильный трек-номер и имя для него.");
-                }
-                else {
-                    sendResponse(chatId, "Пожалуйста, укажите трек-номер и имя.");
-                }
-            }
-            else if (userQuestions.containsKey(update.getMessage().getChatId())){   //если есть вопрос, на который бот ожидает ответ
-                if (userQuestions.get(update.getMessage().getChatId()).equals(questionToken)){  //если ожидается токен
-                    if (!userMessage.equals(getBotToken())){    //и токен введен неверно
-                        sendResponse(chatId, "Токен введен неверно");
-                        userQuestions.remove(update.getMessage().getChatId());
-                    }
-                    else{   //если токен введен верно, бот просит ввести почту
-                        sendResponse(chatId, "Введите почту, на которую будет выслан пароль");
-                        userQuestions.remove(update.getMessage().getChatId());
-                        userQuestions.put(update.getMessage().getChatId(), questionEmail);
-                    }
-                }
-                else if (userQuestions.get(update.getMessage().getChatId()).equals(questionEmail)){ //если бот ожидает ввод почты
-                    if (isValidEmail(userMessage)) {    //и почта введена по шаблону
-                        try {
-                            sendResponse(chatId, "Подождите...");
-                            UserDto userDto = UserDto.builder().id(update.getMessage().getChatId()).email(userMessage).build();
-                            if (startCommand.updateAdminUser(userDto))  //меняем данные о пользователе
-                                sendResponse(chatId, "Пароль отправлен на почту");
-                            else
-                                sendResponse(chatId, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
-                            userQuestions.remove(update.getMessage().getChatId());
-                        }catch (Exception e){
-                            sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
-                        }
-                    }
-                    else {
-                        sendResponse(chatId, "Неправильный формат электронной почты. Введите почту правильно");
-                    }
-                }
-            }
-            else if (userPackage.containsKey(update.getMessage().getChatId())){
-                PackageDto packageDto = userPackage.get(update.getMessage().getChatId());
-                if (packageDto.getNameTrackingStatus()==null){
-                    if (userMessage.equals(answerYes)) packageDto.setNameTrackingStatus("Отслеживается");
-                    if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus("Не отслеживается");
-                    if (packageDto.getNameTrackingStatus()!=null){
-                        userPackage.put(update.getMessage().getChatId(), packageDto);
-                        sendQuestion(update.getMessage().getChatId(), questionRole, answerSender, answerRecipient);
-                    }
-                }
-                else if (packageDto.getNameRole()==null && userMessage.equals(answerSender) ||
-                            userMessage.equals(answerRecipient)) {
-                    packageDto.setNameRole(userMessage);
-                    try {
-                        packageCommand.addNameTrackNumber(packageDto);
-                        userPackage.remove(update.getMessage().getChatId());
-                        sendResponse(chatId,"Имя сохранено.");
-                    } catch (Exception e) {
-                        sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
-                    }
-                }
-            }
-            else {
-                // Логика ответа на другие сообщения
-                String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
-                sendResponse(chatId, botResponse);
+            } catch (Exception e){
+                sendResponse(chatId, "Произошла ошибка: "+e.getMessage());
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
@@ -282,11 +200,148 @@ public class TelegramBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Обработка команд /track и /history
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     */
+    private void processingTrack(String userMessage, Long id){
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) { //если после команды есть текст
+            String track = userMessage.substring(spaceIndex + 1);
+            String receivedNumber = packageCommand.findByName(id, track);   //проверяем, является ли текст иименем
+            if (receivedNumber!=null) track = receivedNumber;   //если не имя - ожидаем, что это трек-номер
+            if (userMessage.startsWith("/track")) sendResponse(id.toString(), trackingCommand.getTrackingMessage(track));
+            else sendResponse(id.toString(), trackingCommand.getHistoryMessage(track));
+        } else {
+            sendResponse(id.toString(), "Пожалуйста, укажите номер отслеживания или существующее имя.");
+        }
+    }
+
+    /**
+     * Обработка команды /delete_name
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception если посылки с переданным именем не существует
+     */
+    private void processingDeleteName(String userMessage, Long id) throws Exception {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            packageCommand.deleteNameTrackNumber(id, userMessage.substring(spaceIndex + 1).toLowerCase());
+            sendResponse(id.toString(), "Имя удалено");
+        } else {
+            sendResponse(id.toString(), "Пожалуйста, укажите удаляемое имя.");
+        }
+    }
+
+    /**
+     * Обработка команды /add_name для уже сохраненной посылки
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception если имя посылки уже используется
+     */
+    private void processingAddName(String userMessage, Long id) throws Exception {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            String trackName = userMessage.substring(spaceIndex + 1);   //отделяем имя и трек-номер от команды
+            spaceIndex = trackName.indexOf(" ");
+            if (spaceIndex != -1 && //если передано и имя, и трек номер, формат которого правильный
+                    trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex)) != null) {
+                if (packageCommand.findByName(id,   //проверяем, добавлял ли пользователь уже такое имя посылке
+                        trackName.substring(spaceIndex + 1).toLowerCase()) != null)
+                    sendResponse(id.toString(), "Такое имя посылки уже создано");
+                else {  //иначе проверяем, есть ли уже данные о посылке для этого пользователя
+                    PackageDto packageDto = packageCommand.findByTrack(id,
+                            trackName.substring(0, spaceIndex));
+                    if (packageDto != null) {   //если данные есть - меняем полученный DTO-объект
+                        packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
+                        packageCommand.addNameTrackNumber(packageDto);
+                        sendResponse(id.toString(), "Имя сохранено.");
+
+                    } else {    //данных нет - создаем новый DTO-объект
+                        packageDto = PackageDto.builder().idUser(id).
+                                namePackage(trackName.substring(spaceIndex + 1).toLowerCase())
+                                .trackNumber(trackName.substring(0, spaceIndex)).build();
+                        userPackage.put(id, packageDto);
+                        sendQuestion(id, questionNotification, answerYes, answerNo);    //задаем вопрос об отслеживании
+                    }
+                }
+            } else sendResponse(id.toString(), "Пожалуйста, укажите правильный трек-номер и имя для него.");
+        } else {
+            sendResponse(id.toString(), "Пожалуйста, укажите трек-номер и имя.");
+        }
+    }
+
+    /**
+     * Обработка команды /add_name для новой посылки
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception если имя посылки уже используется
+     */
+    private void processingPackage(String userMessage, Long id) throws Exception {
+        PackageDto packageDto = userPackage.get(id);
+        if (packageDto.getNameTrackingStatus() == null) {   //если ответ об отслеживании еще не был получен
+            //обрабатываем ответ
+            if (userMessage.equals(answerYes)) packageDto.setNameTrackingStatus(AppConstants.tracked);
+            if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus(AppConstants.noTracked);
+            if (packageDto.getNameTrackingStatus() != null) {   //если ответ об отслеживании получен
+                userPackage.put(id, packageDto);
+                sendQuestion(id, questionRole, answerSender, answerRecipient);  //задаем вопрос о роли
+            }
+        } else if (packageDto.getNameRole() == null && userMessage.equals(answerSender) ||
+                userMessage.equals(answerRecipient)) {  //если ожидаем ответ о роли - сохраняем значение роли
+            packageDto.setNameRole(userMessage);
+            packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
+            userPackage.remove(id);
+            sendResponse(id.toString(), "Имя сохранено.");
+        }
+    }
+
+    /**
+     * Регистрация первого администратора
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception если не удалось получить сущность статуса
+     */
+    private void processingQuestion(String userMessage, Long id) throws Exception {
+        String idString = id.toString();
+        if (userQuestions.get(id).equals(questionToken)) {  //если ожидается токен
+            if (!userMessage.equals(getBotToken())) {    //и токен введен неверно
+                sendResponse(idString, "Токен введен неверно");
+                userQuestions.remove(id);
+            } else {   //если токен введен верно, бот просит ввести почту
+                sendResponse(idString, "Введите почту, на которую будет выслан пароль");
+                userQuestions.remove(id);
+                userQuestions.put(id, questionEmail);
+            }
+        } else if (userQuestions.get(id).equals(questionEmail)) { //если бот ожидает ввод почты
+            if (isValidEmail(userMessage)) {    //и почта введена по шаблону
+                sendResponse(idString, "Подождите...");
+                UserDto userDto = UserDto.builder().id(id).email(userMessage).build();
+                if (startCommand.updateAdminUser(userDto))  //меняем данные о пользователе
+                    sendResponse(idString, "Пароль отправлен на почту");
+                else
+                    sendResponse(idString, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
+                userQuestions.remove(id);
+            } else {
+                sendResponse(idString, "Неправильный формат электронной почты. Введите почту правильно");
+            }
+        }
+    }
+
+    /**
+     * Отправка пользователю вопроса и добавление кнопок-ответов
+     * @param chatId id пользователя
+     * @param question строка-вопрос
+     * @param firstAnswer первый возможный ответ
+     * @param secondAnswer второй возможный ответ
+     */
     private void sendQuestion(long chatId, String question, String firstAnswer, String secondAnswer){
-        SendMessage message = new SendMessage();
+        SendMessage message = new SendMessage();    //формирование сообщения
         message.setChatId(String.valueOf(chatId));
         message.setText(question);
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup(); //создание клавиатуры для взаимодействия с пользователем
         keyboardMarkup.setSelective(true);
         keyboardMarkup.setResizeKeyboard(true);
         keyboardMarkup.setOneTimeKeyboard(true);

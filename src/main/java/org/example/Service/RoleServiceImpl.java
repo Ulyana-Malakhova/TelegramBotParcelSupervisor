@@ -8,8 +8,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Сервис ролей
+ */
 @Service
 public class RoleServiceImpl implements NameServiceInterface<Role> {
+    /**
+     * Репозиторий ролей
+     */
     private final RoleRepository roleRepository;
 
     @Autowired

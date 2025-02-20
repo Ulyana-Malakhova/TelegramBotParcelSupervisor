@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Сервис статусов отслеживания
+ */
 @Service
 public class TrackingStatusServiceImpl implements NameServiceInterface<TrackingStatus>{
     private final TrackingStatusRepository trackingStatusRepository;

@@ -71,10 +71,10 @@ public class StartCommand {
      * @throws Exception не найдена сущность статуса
      */
     public boolean updateAdminUser(UserDto userDto) throws Exception {
-        if (!userService.isUserExist(userDto.getId())) return false;
-        else{
+        if (!userService.isUserExist(userDto.getId())) return false;    //если данных о пользователе нет
+        else{   //данные есть - формируем и отправляем пароль
             String password = emailService.sendPassword(userDto.getEmail());
-            userService.updateUserToAdmin(userDto, password);
+            userService.updateUserToAdmin(userDto, password);   //обновляем данные о пользователе
             return true;
         }
     }

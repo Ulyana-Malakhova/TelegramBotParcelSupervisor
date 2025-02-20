@@ -1,5 +1,6 @@
 package org.example.Service;
 
+import org.example.AppConstants;
 import org.example.Dto.PackageDto;
 import org.example.Entity.Package;
 import org.example.Entity.Role;
@@ -16,16 +17,33 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Сервис посылок
+ */
 @Service
-public class PackageServiceImpl implements ServiceInterface<PackageDto> {
+public class PackageService {
+    /**
+     * Репозиторий посылок
+     */
     private final PackageRepository packageRepository;
+    /**
+     * Сервис ролей
+     */
     private final RoleServiceImpl roleService;
+    /**
+     * Сервис статусов отслеживания
+     */
     private final TrackingStatusServiceImpl trackingStatusService;
+    /**
+     * Сервис пользователей
+     */
     private final UserServiceImpl userService;
+    /**
+     * Объект преобразования для DTO и сущностей
+     */
     private final ModelMapper modelMapper;
-    private final String tracked = "Отслеживается";
     @Autowired
-    public PackageServiceImpl(PackageRepository packageRepository, RoleServiceImpl roleService,
+    public PackageService(PackageRepository packageRepository, RoleServiceImpl roleService,
                           TrackingStatusServiceImpl trackingStatusService, UserServiceImpl userService) {
         this.packageRepository = packageRepository;
         this.roleService = roleService;
@@ -34,6 +52,12 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         this.modelMapper = new ModelMapper();
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
+
+    /**
+     * Поиск посылок конкретного пользователя
+     * @param userId id пользователя
+     * @return список dto-объектов посылок
+     */
     public List<PackageDto> findByUser(Long userId){
         List<PackageDto> packageDtos = new ArrayList<>();
         List<Package> packages = packageRepository.findByUserIdEntity(userId);
@@ -46,19 +70,32 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         }
         return packageDtos;
     }
+
+    /**
+     * Удаление имени посылки
+     * @param userId id пользователя
+     * @param name имя посылки
+     * @throws Exception если посылка с данным именем не найдена
+     */
     public void delete(Long userId, String name) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name);
         if (packageOptional.isEmpty()) throw new Exception("Отправление с данным именем не найдено");
         Package packageEntity = packageOptional.get();
-        TrackingStatus trackingStatus = trackingStatusService.findByName(tracked);
+        TrackingStatus trackingStatus = trackingStatusService.findByName(AppConstants.tracked);
         if (!Objects.equals(packageEntity.getTrackingStatusEntity().getIdTrackingStatus(),
                 trackingStatus.getIdTrackingStatus()))
-            packageRepository.deleteByIdAndName(userId, name);
-        else {
+            packageRepository.deleteByIdAndName(userId, name);  //если посылка не отслеживается - запись о посылке полностью удаляется
+        else {  //иначе - только обнуляется поле имени
             packageEntity.setNamePackage(null);
             packageRepository.save(packageEntity);
         }
     }
+
+    /**
+     * Добавление имени посылке
+     * @param packageDto dto-объект со всеми данными посылки
+     * @throws Exception если посылка с таким именем уже существует у пользователя
+     */
     public void addName(PackageDto packageDto) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(packageDto.getIdUser(),
                 packageDto.getNamePackage());
@@ -72,11 +109,25 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
         packageEntity.setTrackingStatusEntity(trackingStatus);
         packageRepository.save(packageEntity);
     }
+
+    /**
+     * Получение трек-номера посылки по ее имени
+     * @param userId id пользователя
+     * @param name имя посылки
+     * @return строка - трек-номер
+     */
     public String findByName(Long userId, String name){
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId,
                 name);
         return packageOptional.map(Package::getTrackNumber).orElse(null);
     }
+
+    /**
+     * Поиск посылки по имени
+     * @param userId id пользователя
+     * @param track трек-номер посылки
+     * @return dto-объект посылки
+     */
     public PackageDto findByTrack(Long userId, String track){
         Optional<Package> packageOptional = packageRepository.findByTrackNumberAndUserId(userId,
                 track);
@@ -89,16 +140,5 @@ public class PackageServiceImpl implements ServiceInterface<PackageDto> {
             packageDto.setIdUser(packageEntity.getUserEntity().getId());
             return packageDto;
         }
-    }
-
-    @Override
-    public void save(PackageDto Dto) throws Exception {
-        //посмотреть, будет ли использоваться
-    }
-
-    @Override
-    public PackageDto get(Long id) throws Exception {
-        //посмотреть, будет ли использоваться
-        return null;
     }
 }

@@ -11,5 +11,10 @@ import java.util.Optional;
  */
 @Repository
 public interface StatusRepository extends JpaRepository<Status, Long> {
+    /**
+     * Получение сущности статуса по названию
+     * @param status название статуса
+     * @return сущность статуса
+     */
     Optional<Status> findByStatusName(String status);
 }
