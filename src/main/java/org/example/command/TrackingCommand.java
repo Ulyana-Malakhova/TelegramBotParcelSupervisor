@@ -4,6 +4,7 @@ import org.example.api.PackageLocation;
 import org.example.api.tracking_api.TrackingApiClientBoxberry;
 import org.example.api.tracking_api.TrackingApiClientCSE;
 import org.example.api.tracking_api.TrackingApiClientDPD;
+import org.example.api.tracking_api.TrackingApiClientPochta;
 
 /**
  * Класс обработки команд трекинга
@@ -21,6 +22,10 @@ public class TrackingCommand {
      * Объект для использования api DPD
      */
     private final TrackingApiClientDPD apiDPD = new TrackingApiClientDPD();
+    /**
+     * Объект для использования api Почты России
+     */
+    private final TrackingApiClientPochta apiPochta = new TrackingApiClientPochta();
     /**
      * Сообщение при получении трек-номера, формат которого не совпадает с существующими
      */
@@ -45,7 +50,7 @@ public class TrackingCommand {
         answer = "Служба доставки: "+service.toString()+'\n';
         PackageLocation location = null;
         switch (service){   //вызываем метод получения местоположения в соответствии с сервисом
-            case RUSSIAN_POST -> {}// TODO почта россии
+            case RUSSIAN_POST -> location=apiPochta.getTrack(trackingNumber);
             case DPD -> location = apiDPD.getTrack(trackingNumber);
             case CSE -> location = apiCSE.getTrack(trackingNumber);
             case BOXBERRY -> location = apiBoxberry.getTrack(trackingNumber);
@@ -70,7 +75,7 @@ public class TrackingCommand {
         answer = "Служба доставки: "+service.toString()+'\n';
         PackageLocation[] locations = null;
         switch (service){   //вызываем метод получения истории в соответствии с сервисом
-            case RUSSIAN_POST -> {}// TODO почта россии
+            case RUSSIAN_POST -> locations = apiPochta.getHistoryTrack(trackingNumber);
             case DPD -> locations = apiDPD.getHistoryTrack(trackingNumber);
             case CSE ->locations = apiCSE.getHistoryTrack(trackingNumber);
             case BOXBERRY -> locations = apiBoxberry.getHistoryTrack(trackingNumber);
