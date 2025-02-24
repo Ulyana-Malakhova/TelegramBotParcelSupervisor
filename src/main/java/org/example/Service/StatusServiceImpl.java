@@ -2,9 +2,6 @@ package org.example.Service;
 
 import org.example.Entity.Status;
 import org.example.Repository.StatusRepository;
-import org.example.Repository.UserRepository;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,23 +11,24 @@ import java.util.Optional;
  * Сервис для статуса пользователя
  */
 @Service
-public class StatusService {
+public class StatusServiceImpl implements NameServiceInterface<Status>{
     /**
      * Репозиторий для статуса пользователя
      */
     private final StatusRepository statusRepository;
     @Autowired
-    public StatusService(StatusRepository statusRepository) {
+    public StatusServiceImpl(StatusRepository statusRepository) {
         this.statusRepository=statusRepository;
     }
 
     /**
      * Поиск статуса по названию
-     * @param status название статуса
+     * @param name название статуса
      * @return сущность статуса
      */
-    public Status findByNameStatus(String status){
-        Optional<Status> statusOptional = statusRepository.findByStatusName(status);
+    @Override
+    public Status findByName(String name) {
+        Optional<Status> statusOptional = statusRepository.findByStatusName(name);
         return statusOptional.orElse(null);
     }
 }
