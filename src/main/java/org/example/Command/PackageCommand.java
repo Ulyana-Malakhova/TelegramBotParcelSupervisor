@@ -31,6 +31,15 @@ public class PackageCommand {
     }
 
     /**
+     * Изменение статуса отслеживания
+     * @param packageDto dto-объект посылки
+     * @throws Exception не найдена запись посылки или статуса
+     */
+    public void changeTrackingStatus(PackageDto packageDto) throws Exception {
+        packageService.updateTrackingStatus(packageDto);
+    }
+
+    /**
      * Удаление имени посылки
      * @param userId id пользователя
      * @param name имя посылки
@@ -61,9 +70,9 @@ public class PackageCommand {
      * Поиск посылки по имени
      * @param userId id пользователя
      * @param name имя посылки
-     * @return трек-номер посылки с данным именем, в случае ее отсутствия - null
+     * @return dto-объект посылки, в случае ее отсутствия - null
      */
-    public String findByName(Long userId, String name){
+    public PackageDto findByName(Long userId, String name){
         return packageService.findByName(userId, name);
     }
 

@@ -14,10 +14,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +34,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для сохранения промежуточной информации о посылках
      */
     private final Map<Long, PackageDto> userPackage = new HashMap<>();
+    /**
+     * Мапа для сохранения промежуточной информации о посылках при изменении статуса отслеживания
+     */
+    private final Map<Long, PackageDto> userPackageTrackingStatus = new HashMap<>();
     /**
      * Вопрос-ожидание токена
      */
@@ -118,11 +119,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingDeleteName(userMessage, id);
                 } else if (userMessage.startsWith("/add_name")) {
                     processingAddName(userMessage, id);
-                } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
+                } else if (userMessage.startsWith("/traceability_track")){
+                    processingTraceability(userMessage, id);
+                }
+                else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
                     processingQuestion(userMessage, id);
                 } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
                     processingPackage(userMessage, id);
-                } else {
+                } else if (userPackageTrackingStatus.containsKey(id)){
+                    processingStatusChange(userMessage, id);
+                }
+                else {
                     // Логика ответа на другие сообщения
                     String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                     sendResponse(chatId, botResponse);
@@ -210,8 +217,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1) { //если после команды есть текст
             String track = userMessage.substring(spaceIndex + 1);
-            String receivedNumber = packageCommand.findByName(id, track);   //проверяем, является ли текст иименем
-            if (receivedNumber!=null) track = receivedNumber;   //если не имя - ожидаем, что это трек-номер
+            PackageDto receivedNumber = packageCommand.findByName(id, track);   //проверяем, является ли текст именем
+            if (receivedNumber!=null) track = receivedNumber.getTrackNumber();   //если не имя - ожидаем, что это трек-номер
             if (userMessage.startsWith("/track")) sendResponse(id.toString(), trackingCommand.getTrackingMessage(track));
             else sendResponse(id.toString(), trackingCommand.getHistoryMessage(track));
         } else {
@@ -283,8 +290,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         PackageDto packageDto = userPackage.get(id);
         if (packageDto.getNameTrackingStatus() == null) {   //если ответ об отслеживании еще не был получен
             //обрабатываем ответ
-            if (userMessage.equals(answerYes)) packageDto.setNameTrackingStatus(AppConstants.tracked);
-            if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus(AppConstants.noTracked);
+            if (userMessage.equals(answerYes)) packageDto.setNameTrackingStatus(AppConstants.TRACKED);
+            if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus(AppConstants.NO_TRACKED);
             if (packageDto.getNameTrackingStatus() != null) {   //если ответ об отслеживании получен
                 userPackage.put(id, packageDto);
                 sendQuestion(id, questionRole, answerSender, answerRecipient);  //задаем вопрос о роли
@@ -294,7 +301,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             packageDto.setNameRole(userMessage);
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
-            sendResponse(id.toString(), "Имя сохранено.");
+            sendResponseAndDeleteKeyboard(id.toString(), "Имя сохранено.");
         }
     }
 
@@ -330,6 +337,71 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Обработка команды для изменения статуса отслеживания
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     */
+    private void processingTraceability(String userMessage, Long id){
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) { //если после команды есть текст
+            String track = userMessage.substring(spaceIndex + 1);
+            PackageDto packageDto = packageCommand.findByName(id, track);   //ищем посылку по имени
+            if (packageDto==null) packageDto = packageCommand.findByTrack(id, track);   //если посылку не нашли - ищем по трек-номеру
+            if (packageDto==null && trackingCommand.serviceDefinition(track)!=null) {   //если посылка в бд не найдена, но в команде передан трек-номер
+                packageDto = PackageDto.builder().idUser(id).trackNumber(track).build();
+                sendQuestion(id, "Данные об отслеживании посылки не найдены. " +
+                        "Хотите получать уведомления о статусе посылки?", answerYes, answerNo);
+                userPackageTrackingStatus.put(id, packageDto);
+            }
+            else if (packageDto==null && trackingCommand.serviceDefinition(track)==null){   //если посылка не найдена, и передан не трек-номер
+                sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
+            }
+            else if (packageDto!=null){ //если посылка найдена
+                if (packageDto.getNameTrackingStatus().equals(AppConstants.DELIVERED)) //и уже доставлена
+                    sendResponse(id.toString(), "Посылка доставлена, поменять статус отслеживания нельзя.");
+                else {
+                    sendQuestion(id, "Сейчас посылка " + packageDto.getNameTrackingStatus().toLowerCase() + "" +
+                            ". Хотите поменять статус отслеживания на противоположный?", answerYes, answerNo);
+                    userPackageTrackingStatus.put(id, packageDto);
+                }
+            }
+        }else {
+            sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
+        }
+    }
+
+    /**
+     * Обработка ответа об изменении статуса отслеживания
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception не найдена запись посылки или статуса
+     */
+    private void processingStatusChange(String userMessage, Long id) throws Exception {
+        PackageDto packageDto = userPackageTrackingStatus.get(id);
+        if (packageDto.getNameTrackingStatus()!=null) {  //если посылка уже есть в бд
+            if (userMessage.equals(answerYes)){ //и ответ утвердительный - меняем статус на противоположный
+                if (packageDto.getNameTrackingStatus().equals(AppConstants.TRACKED))
+                    packageDto.setNameTrackingStatus(AppConstants.NO_TRACKED);
+                else if (packageDto.getNameTrackingStatus().equals(AppConstants.NO_TRACKED))
+                    packageDto.setNameTrackingStatus(AppConstants.TRACKED);
+                packageCommand.changeTrackingStatus(packageDto);
+                sendResponseAndDeleteKeyboard(id.toString(), "Изменения сохранены, посылка "+packageDto.getNameTrackingStatus().toLowerCase());
+            }
+        }
+        else{   //если посылки в бд еще нет
+            if (userMessage.equals(answerYes)){ //и ответ утвердительный
+                packageDto.setNameTrackingStatus(AppConstants.TRACKED);
+                userPackageTrackingStatus.remove(id);
+                userPackage.put(id, packageDto);    //добавляем посылку в мапу для создания посылки
+                sendQuestion(id, questionRole, answerSender, answerRecipient);  //задаем вопрос о роли
+            }
+        }
+        if (userMessage.equals(answerNo)) {
+            userPackageTrackingStatus.remove(id);
+            sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
+        }
+    }
     /**
      * Отправка пользователю вопроса и добавление кнопок-ответов
      * @param chatId id пользователя

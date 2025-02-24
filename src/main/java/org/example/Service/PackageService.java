@@ -81,7 +81,7 @@ public class PackageService {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId, name);
         if (packageOptional.isEmpty()) throw new Exception("Отправление с данным именем не найдено");
         Package packageEntity = packageOptional.get();
-        TrackingStatus trackingStatus = trackingStatusService.findByName(AppConstants.tracked);
+        TrackingStatus trackingStatus = trackingStatusService.findByName(AppConstants.TRACKED);
         if (!Objects.equals(packageEntity.getTrackingStatusEntity().getIdTrackingStatus(),
                 trackingStatus.getIdTrackingStatus()))
             packageRepository.deleteByIdAndName(userId, name);  //если посылка не отслеживается - запись о посылке полностью удаляется
@@ -111,15 +111,41 @@ public class PackageService {
     }
 
     /**
-     * Получение трек-номера посылки по ее имени
+     * Обновление статуса отслеживания
+     * @param packageDto dto-объект посылки
+     * @throws Exception не найдена запись посылки или статуса
+     */
+    public void updateTrackingStatus(PackageDto packageDto) throws Exception {
+        Optional<Package> packageOptional = packageRepository.findByTrackNumberAndUserId(packageDto.getIdUser(),
+                packageDto.getTrackNumber());
+        TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
+        if (trackingStatus==null) throw new Exception("Статус не найден");
+        if (packageOptional.isEmpty()) throw new Exception("Данные о посылке не найдены");
+        else {
+            Package packageEntity = packageOptional.get();
+            packageEntity.setTrackingStatusEntity(trackingStatus);
+            packageRepository.save(packageEntity);
+        }
+    }
+
+    /**
+     * Получение объекта посылки по ее имени
      * @param userId id пользователя
      * @param name имя посылки
-     * @return строка - трек-номер
+     * @return dto-объект посылки
      */
-    public String findByName(Long userId, String name){
+    public PackageDto findByName(Long userId, String name){
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(userId,
                 name);
-        return packageOptional.map(Package::getTrackNumber).orElse(null);
+        if (packageOptional.isEmpty()) return null;
+        else{
+            Package packageEntity = packageOptional.get();
+            PackageDto packageDto = modelMapper.map(packageEntity, PackageDto.class);
+            packageDto.setNameRole(packageEntity.getRoleEntity().getNameRole());
+            packageDto.setNameTrackingStatus(packageEntity.getTrackingStatusEntity().getNameTrackingStatus());
+            packageDto.setIdUser(packageEntity.getUserEntity().getId());
+            return packageDto;
+        }
     }
 
     /**
