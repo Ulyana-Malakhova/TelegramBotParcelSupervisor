@@ -7,12 +7,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
+import org.example.Dto.PackageDto;
 import org.example.api.PackageLocation;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
@@ -141,4 +143,6 @@ public abstract class TrackingApiClient {
             System.out.println("Ошибка форматирования даты");
         }
     }
+
+    protected abstract void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException;
 }

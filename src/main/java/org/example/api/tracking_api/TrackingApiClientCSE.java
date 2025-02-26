@@ -1,8 +1,11 @@
 package org.example.api.tracking_api;
 
+import org.example.AppConstants;
+import org.example.Dto.PackageDto;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -33,6 +36,25 @@ public class TrackingApiClientCSE extends TrackingApiClient {
         }
         sortJSONArrayByDate(mergedArray);
         return mergedArray;
+    }
+
+    @Override
+    protected void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
+        JSONObject jsonResponse = getParcelTrackingJson(packageDto.getTrackNumber());
+        JSONArray foundArray = jsonResponse.getJSONArray("found");
+        JSONObject foundObject = foundArray.getJSONObject(0);
+        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
+        if (packageDto.getDepartureDate() == null && foundObject.optString("TakeDate") != null)
+            packageDto.setDepartureDate(formatter.parse(foundObject.optString("TakeDate")));
+        if (packageDto.getReceiptDate() == null && foundObject.optString("DeliveryDate") != null) {
+            packageDto.setReceiptDate(formatter.parse(foundObject.optString("DeliveryDate")));
+            if (foundObject.optString("State") != null
+                    && foundObject.optString("State").equals("Доставка успешно выполнена"))
+                packageDto.setNamePackage(AppConstants.DELIVERED);
+        }
+        if (foundObject.optString("State") != null
+                && foundObject.optString("State").equals("Отмена заказа"))
+            packageDto.setNamePackage(AppConstants.CANCELED);
     }
 
     /**

@@ -3,6 +3,7 @@ package org.example.Dto;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.Date;
 
 /**
  * DTO-объект посылки
@@ -28,11 +29,11 @@ public class PackageDto {
     /**
      * Дата отправки посылки
      */
-    private LocalDate departureDate;
+    private Date departureDate;
     /**
      * Дата получения посылки
      */
-    private LocalDate receiptDate;
+    private Date receiptDate;
     /**
      * id пользователя
      */

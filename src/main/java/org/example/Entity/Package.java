@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.Date;
 
 /**
  * Сущность посылки
@@ -37,12 +38,12 @@ public class Package {
      * Дата отправки
      */
     @Column(name = "\"Departure_Date\"")
-    private LocalDate departureDate;
+    private Date departureDate;
     /**
      * Дата получения
      */
     @Column(name = "\"Receipt_Date\"")
-    private LocalDate receiptDate;
+    private Date receiptDate;
     /**
      * Сущность пользователя
      */
