@@ -22,18 +22,18 @@ public class TrackingApiClientBoxberry extends TrackingApiClient {
     }
 
     @Override
-    protected void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
+    public void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
         JSONObject jsonResponse = getParcelTrackingJson(packageDto.getTrackNumber());   //выполняем http-запрос
         JSONArray statusesArray = getStatuses(jsonResponse);    //из json получаем список данных о местоположении
-        JSONObject statusObject = statusesArray.getJSONObject(0);
-        if (statusObject!=null && statusObject.optString(fieldDate)!=null && packageDto.getDepartureDate()==null)
+        JSONObject statusObject = statusesArray.getJSONObject(0);   //для получения даты отправки берем первый статус
+        if (statusObject!=null && !statusObject.optString(fieldDate).isEmpty() && packageDto.getDepartureDate()==null)
             packageDto.setDepartureDate(format.parse(statusObject.optString(fieldDate)));
         String status = jsonResponse.getJSONArray("parcel_with_statuses").getJSONObject(0)
-                .optString("status_code");
-        if (status!=null && (Integer.parseInt(status)==190 || Integer.parseInt(status)==150)
-                && packageDto.getReceiptDate()==null) {
+                .optString("status_code");  //получаем текущий код статуса посылки
+        if (!status.isEmpty() && (Integer.parseInt(status)==190 || Integer.parseInt(status)==150)
+                && packageDto.getReceiptDate()==null) { //дату получения берем из последнего статуса
             statusObject = statusesArray.getJSONObject(statusesArray.length()-1);
-            if (statusObject.optString(fieldDate)!=null)
+            if (!statusObject.optString(fieldDate).isEmpty())
                 packageDto.setReceiptDate(format.parse(statusObject.optString(fieldDate)));
             if (Integer.parseInt(status)==190) packageDto.setNameTrackingStatus(AppConstants.CANCELED);
             if (Integer.parseInt(status)==150) packageDto.setNameTrackingStatus(AppConstants.DELIVERED);

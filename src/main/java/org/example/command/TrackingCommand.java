@@ -1,10 +1,14 @@
 package org.example.Command;
 
+import org.example.Dto.PackageDto;
 import org.example.api.PackageLocation;
 import org.example.api.tracking_api.TrackingApiClientBoxberry;
 import org.example.api.tracking_api.TrackingApiClientCSE;
 import org.example.api.tracking_api.TrackingApiClientDPD;
 import org.example.api.tracking_api.TrackingApiClientPochta;
+
+import java.io.IOException;
+import java.text.ParseException;
 
 /**
  * Класс обработки команд трекинга
@@ -89,6 +93,22 @@ public class TrackingCommand {
     }
 
     /**
+     * Метод для обновления данных посылки об отправке/получении
+     * @param packageDto dto объект посылки
+     * @throws IOException статус ответа не OK, ошибка сети или проблемы с подключением
+     * @throws ParseException ошибка в парсинге даты
+     */
+    public void updateParcelDetails(PackageDto packageDto) throws IOException, ParseException {
+        PostalService service = serviceDefinition(packageDto.getTrackNumber());  //определяем, к какому сервису относится трек-номер
+        switch (service){   //вызываем метод в соответствии с сервисом
+            case RUSSIAN_POST -> apiPochta.receivingDeliveryData(packageDto);
+            case DPD -> apiDPD.receivingDeliveryData(packageDto);
+            case CSE -> apiCSE.receivingDeliveryData(packageDto);
+            case BOXBERRY -> apiBoxberry.receivingDeliveryData(packageDto);
+        }
+    }
+
+    /**
      * Метод для определения принадлежности трек номера почтовому сервису
      * @param trackingNumber трек-номер
      * @return элемент перечисления почтового сервиса
@@ -99,7 +119,9 @@ public class TrackingCommand {
         else if ((trackingNumber.length()==13 && isOnlyNumbers(trackingNumber)) ||
                 trackingNumber.matches("^[a-zA-Z]{3}\\d{9}$")) return PostalService.BOXBERRY;
         else if (trackingNumber.matches("^[a-zA-Z]{2}\\d{9}$")) return PostalService.DPD;
-        else if (trackingNumber.matches("^\\d{3}-\\d{9}$")) return PostalService.CSE;
+        else if (trackingNumber.matches("^\\d{3}-\\d{9}$") ||
+                (isOnlyNumbers(trackingNumber) && trackingNumber.length()==11)
+                || trackingNumber.matches("^[0-9]{3}-[A-Z][0-9]{6}-[0-9]{8}$")) return PostalService.CSE;
         else return null;
     }
 

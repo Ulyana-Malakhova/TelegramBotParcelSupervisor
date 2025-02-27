@@ -36,7 +36,7 @@ public class TrackingApiClientPochta extends TrackingApiClient {
     }
 
     @Override
-    protected void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
+    public void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
         JSONObject jsonResponse = getParcelTrackingJson(packageDto.getTrackNumber());   //выполняем http-запрос
         JSONArray foundArray = jsonResponse.getJSONArray("detailedTrackings");
         JSONObject foundObject = foundArray.getJSONObject(0);
@@ -44,23 +44,24 @@ public class TrackingApiClientPochta extends TrackingApiClient {
         if (shipmentObject!=null) {
             JSONObject object;
             if (packageDto.getDepartureDate()==null) {
-                object = shipmentObject.optJSONObject("acceptance");
+                object = shipmentObject.getJSONObject("acceptance");
                 if (object != null) {
                     String departureDate = object.optString("date");
-                    if (departureDate != null) packageDto.setDepartureDate(format.parse(jsonResponse.optString(departureDate)));
+                    if (!departureDate.isEmpty()) packageDto.setDepartureDate(format.parse(departureDate));
                 }
             }
             if (packageDto.getReceiptDate()==null) {
-                object = shipmentObject.optJSONObject("arrived");
+                object = shipmentObject.getJSONObject("arrived");
                 if (object != null) {
                     String receiptDate = object.optString("date");
-                    if (receiptDate != null) packageDto.setReceiptDate(format.parse(jsonResponse.optString(receiptDate)));
+                    if (!receiptDate.isEmpty()) packageDto.setReceiptDate(format.parse(receiptDate));
                 }
-                String typeOper = foundObject.getJSONObject("trackingItem").optString("lastOperationType");
-                if (Integer.parseInt(typeOper)==2) packageDto.setNamePackage(AppConstants.DELIVERED);
-                if (Integer.parseInt(typeOper)==3 || Integer.parseInt(typeOper)==5)
-                    packageDto.setNamePackage(AppConstants.CANCELED);
             }
         }
+        //определение состояние по значению типа последней операции
+        String typeOper = foundObject.getJSONObject("trackingItem").optString("lastOperationType");
+        if (Integer.parseInt(typeOper)==2) packageDto.setNameTrackingStatus(AppConstants.DELIVERED);
+        if (Integer.parseInt(typeOper)==3 || Integer.parseInt(typeOper)==5)
+            packageDto.setNameTrackingStatus(AppConstants.CANCELED);
     }
 }

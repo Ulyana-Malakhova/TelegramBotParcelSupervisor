@@ -14,7 +14,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
@@ -144,5 +143,11 @@ public abstract class TrackingApiClient {
         }
     }
 
-    protected abstract void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException;
+    /**
+     * Метод для получения данных об отправке/получении посылки
+     * @param packageDto dto для записи данных о посылке
+     * @throws IOException статус ответа не OK, ошибка сети или проблемы с подключением
+     * @throws ParseException ошибка в парсинге даты
+     */
+    public abstract void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException;
 }

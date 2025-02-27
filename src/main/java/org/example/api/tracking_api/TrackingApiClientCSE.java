@@ -10,6 +10,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * Класс для получения данных с api-запросов КСЭ
@@ -39,22 +40,25 @@ public class TrackingApiClientCSE extends TrackingApiClient {
     }
 
     @Override
-    protected void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
+    public void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException {
         JSONObject jsonResponse = getParcelTrackingJson(packageDto.getTrackNumber());
-        JSONArray foundArray = jsonResponse.getJSONArray("found");
-        JSONObject foundObject = foundArray.getJSONObject(0);
-        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
-        if (packageDto.getDepartureDate() == null && foundObject.optString("TakeDate") != null)
-            packageDto.setDepartureDate(formatter.parse(foundObject.optString("TakeDate")));
-        if (packageDto.getReceiptDate() == null && foundObject.optString("DeliveryDate") != null) {
-            packageDto.setReceiptDate(formatter.parse(foundObject.optString("DeliveryDate")));
-            if (foundObject.optString("State") != null
-                    && foundObject.optString("State").equals("Доставка успешно выполнена"))
-                packageDto.setNamePackage(AppConstants.DELIVERED);
+        JSONArray foundArray = jsonResponse.optJSONArray("found");
+        if (!foundArray.isEmpty()) {
+            JSONObject foundObject = foundArray.getJSONObject(0);
+            SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
+            //получаем даты из соответствующих полей
+            if (packageDto.getDepartureDate() == null && !foundObject.optString("TakeDate").isEmpty())
+                packageDto.setDepartureDate(formatter.parse(foundObject.optString("TakeDate")));
+            if (packageDto.getReceiptDate() == null && !foundObject.optString("DeliveryDate").isEmpty()) {
+                packageDto.setReceiptDate(formatter.parse(foundObject.optString("DeliveryDate")));
+            }
+            if (!foundObject.optString("State").isEmpty()) {    //определение состояния по статусу
+                if (foundObject.optString("State").equals("Доставка успешно выполнена"))
+                    packageDto.setNameTrackingStatus(AppConstants.DELIVERED);
+                else if (foundObject.optString("State").equals("Отмена заказа"))
+                    packageDto.setNameTrackingStatus(AppConstants.CANCELED);
+            }
         }
-        if (foundObject.optString("State") != null
-                && foundObject.optString("State").equals("Отмена заказа"))
-            packageDto.setNamePackage(AppConstants.CANCELED);
     }
 
     /**

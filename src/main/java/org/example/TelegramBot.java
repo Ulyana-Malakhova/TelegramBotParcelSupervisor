@@ -314,6 +314,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (packageDto.getNameRole() == null && userMessage.equals(answerSender) ||
                 userMessage.equals(answerRecipient)) {  //если ожидаем ответ о роли - сохраняем значение роли
             packageDto.setNameRole(userMessage);
+            trackingCommand.updateParcelDetails(packageDto);
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), "Имя сохранено.");
@@ -375,6 +376,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             else if (packageDto!=null){ //если посылка найдена
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.DELIVERED)) //и уже доставлена
                     sendResponse(id.toString(), "Посылка доставлена, поменять статус отслеживания нельзя.");
+                else if (packageDto.getNameTrackingStatus().equals(AppConstants.CANCELED))
+                    sendResponse(id.toString(), "Посылка отменена, поменять статус отслеживания нельзя.");
                 else {
                     sendQuestion(id, "Сейчас посылка " + packageDto.getNameTrackingStatus().toLowerCase() + "" +
                             ". Хотите поменять статус отслеживания на противоположный?", answerYes, answerNo);
