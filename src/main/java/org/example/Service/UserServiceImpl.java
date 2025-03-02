@@ -22,6 +22,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
     private final UserRepository userRepository;
     private final StatusServiceImpl statusService;
     private final String statusUser = "User";
+    private final String statusBlocked = "Blocked";
     private final String statusAdmin = "Admin";
     private final ModelMapper modelMapper;
 
@@ -154,6 +155,41 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
 
         int rowNum = 1;
         for (User userEntity : users) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(userEntity.getId());
+            row.createCell(1).setCellValue(userEntity.getName());
+            row.createCell(2).setCellValue(userEntity.getSurname());
+            row.createCell(3).setCellValue(userEntity.getUsername());
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+
+        return outputStream;
+    }
+
+    /**
+     * Создание и заполнение эксель файла с заблокированными пользователями
+     *
+     * @return поток с эксель файлом
+     * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
+     */
+    public ByteArrayOutputStream exportBlockedUsersToExcel() throws Exception {
+        Status status = getStatus(statusBlocked);
+        List<User> blockedUsers = userRepository.findByStatus(status);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("BlockedUser");
+
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(0).setCellValue("id");
+        headerRow.createCell(1).setCellValue("name");
+        headerRow.createCell(2).setCellValue("surname");
+        headerRow.createCell(3).setCellValue("username");
+
+        int rowNum = 1;
+        for (User userEntity : blockedUsers) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(userEntity.getId());
             row.createCell(1).setCellValue(userEntity.getName());
