@@ -44,6 +44,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final PackageCommand packageCommand;
     private final ReportCommand reportCommand;
     private final ViewUsersCommand viewUsersCommand;
+    private final ViewAdminsCommand viewAdminsCommand;
     private final ViewBlockedUsersCommand viewBlockedUsersCommand;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
@@ -96,13 +97,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
 
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand, ViewUsersCommand viewUsersCommand, ViewBlockedUsersCommand viewBlockedUsersCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand, ViewUsersCommand viewUsersCommand, ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
         this.messageService = messageService;
         this.packageCommand = packageCommand;
         this.reportCommand = reportCommand;
         this.viewUsersCommand = viewUsersCommand;
+        this.viewAdminsCommand = viewAdminsCommand;
         this.viewBlockedUsersCommand = viewBlockedUsersCommand;
     }
 
@@ -176,6 +178,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 // Обработка команды /view_blocked_users
                 else if (userMessage.equals("/view_blocked_users")){
                     viewBlockedUsersCommand.execute(longChatId);
+                }
+                // Обработка команды /view_admins
+                else if (userMessage.equals("/view_admins")){
+                    viewAdminsCommand.execute(longChatId);
                 }
                 else {
                     // Логика ответа на другие сообщения

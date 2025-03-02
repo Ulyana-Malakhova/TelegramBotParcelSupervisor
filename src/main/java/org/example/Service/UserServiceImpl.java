@@ -203,4 +203,39 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
 
         return outputStream;
     }
+
+    /**
+     * Создание и заполнение эксель файла с администраторами
+     *
+     * @return поток с эксель файлом
+     * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
+     */
+    public ByteArrayOutputStream exportAdminsToExcel() throws Exception {
+        Status status = getStatus(statusAdmin);
+        List<User> admins = userRepository.findByStatus(status);
+
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Administrators");
+
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(0).setCellValue("id");
+        headerRow.createCell(1).setCellValue("name");
+        headerRow.createCell(2).setCellValue("surname");
+        headerRow.createCell(3).setCellValue("username");
+
+        int rowNum = 1;
+        for (User userEntity : admins) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(userEntity.getId());
+            row.createCell(1).setCellValue(userEntity.getName());
+            row.createCell(2).setCellValue(userEntity.getSurname());
+            row.createCell(3).setCellValue(userEntity.getUsername());
+        }
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        workbook.write(outputStream);
+        workbook.close();
+
+        return outputStream;
+    }
 }
