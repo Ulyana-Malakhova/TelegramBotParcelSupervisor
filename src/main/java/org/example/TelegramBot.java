@@ -12,14 +12,20 @@ import org.example.Service.MessageServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +42,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final StartCommand startCommand;
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
+    private final ReportCommand reportCommand;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -85,12 +92,14 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Регулярное выражение для проверки почты
      */
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties,MessageServiceImpl messageService, PackageCommand packageCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
-        this.messageService=messageService;
+        this.messageService = messageService;
         this.packageCommand = packageCommand;
+        this.reportCommand = reportCommand;
     }
 
     @Override
@@ -105,10 +114,18 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
+        if (update.hasCallbackQuery()) {
+            String callbackData = update.getCallbackQuery().getData();
+            Long chatId = update.getCallbackQuery().getMessage().getChatId();
+            if (callbackData.startsWith("report_period_")) {
+                String period = callbackData.split("_")[2];
+                reportCommand.execute(chatId, period);
+            }
+        } else if (update.hasMessage() && update.getMessage().hasText()) {
             Long id = update.getMessage().getChatId();
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
+            long longChatId = update.getMessage().getChatId();
             long messageDate = update.getMessage().getDate();
             Long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
@@ -143,6 +160,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingPackage(userMessage, id);
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
+                } else if (userMessage.equals("/report")) {
+                    reportOption(longChatId);
                 } else {
                     // Логика ответа на другие сообщения
                     String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
@@ -185,19 +204,20 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (newUser) {
                 sendResponseAndDeleteKeyboard(chatId, "Спасибо за предоставление вашего номера телефона!");
                 sendResponse(chatId, helpCommand.getHelpMessage());
-                    if (!startCommand.isAdministratorRegistered()) {
-                        sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
-                                "значение токена телеграм-бота");
-                        userQuestions.put(update.getMessage().getChatId(), questionToken);
-                    }
+                if (!startCommand.isAdministratorRegistered()) {
+                    sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
+                            "значение токена телеграм-бота");
+                    userQuestions.put(update.getMessage().getChatId(), questionToken);
+                }
             } else {
                 sendResponse(chatId, "Произошла ошибка, пожалуйста, попробуйте снова поделиться номером телефона");
             }
-        }catch (Exception e){
-            sendResponse(chatId,"Произошла ошибка: "+e.getMessage());
+        } catch (Exception e) {
+            sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
         }
     }
-    private void sendResponseAndDeleteKeyboard(String chatId, String messageText){
+
+    private void sendResponseAndDeleteKeyboard(String chatId, String messageText) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(messageText);
@@ -208,6 +228,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         message.setReplyMarkup(keyboardRemove);
         sendMessage(message);
     }
+
     private void sendResponse(String chatId, String messageText) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
@@ -225,16 +246,19 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команд /track и /history
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      */
-    private void processingTrack(String userMessage, Long id){
+    private void processingTrack(String userMessage, Long id) {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1) { //если после команды есть текст
             String track = userMessage.substring(spaceIndex + 1);
             PackageDto receivedNumber = packageCommand.findByName(id, track);   //проверяем, является ли текст именем
-            if (receivedNumber!=null) track = receivedNumber.getTrackNumber();   //если не имя - ожидаем, что это трек-номер
-            if (userMessage.startsWith("/track")) sendResponse(id.toString(), trackingCommand.getTrackingMessage(track));
+            if (receivedNumber != null)
+                track = receivedNumber.getTrackNumber();   //если не имя - ожидаем, что это трек-номер
+            if (userMessage.startsWith("/track"))
+                sendResponse(id.toString(), trackingCommand.getTrackingMessage(track));
             else sendResponse(id.toString(), trackingCommand.getHistoryMessage(track));
         } else {
             sendResponse(id.toString(), "Пожалуйста, укажите номер отслеживания или существующее имя.");
@@ -243,8 +267,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды /delete_name
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception если посылки с переданным именем не существует
      */
     private void processingDeleteName(String userMessage, Long id) throws Exception {
@@ -259,8 +284,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды /add_name для уже сохраненной посылки
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception если имя посылки уже используется
      */
     private void processingAddName(String userMessage, Long id) throws Exception {
@@ -297,8 +323,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды /add_name для новой посылки
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception если имя посылки уже используется
      */
     private void processingPackage(String userMessage, Long id) throws Exception {
@@ -322,8 +349,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Регистрация первого администратора
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception если не удалось получить сущность статуса
      */
     private void processingQuestion(String userMessage, Long id) throws Exception {
@@ -354,25 +382,25 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды для изменения статуса отслеживания
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      */
-    private void processingTraceability(String userMessage, Long id){
+    private void processingTraceability(String userMessage, Long id) {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1) { //если после команды есть текст
             String track = userMessage.substring(spaceIndex + 1);
             PackageDto packageDto = packageCommand.findByName(id, track);   //ищем посылку по имени
-            if (packageDto==null) packageDto = packageCommand.findByTrack(id, track);   //если посылку не нашли - ищем по трек-номеру
-            if (packageDto==null && trackingCommand.serviceDefinition(track)!=null) {   //если посылка в бд не найдена, но в команде передан трек-номер
+            if (packageDto == null)
+                packageDto = packageCommand.findByTrack(id, track);   //если посылку не нашли - ищем по трек-номеру
+            if (packageDto == null && trackingCommand.serviceDefinition(track) != null) {   //если посылка в бд не найдена, но в команде передан трек-номер
                 packageDto = PackageDto.builder().idUser(id).trackNumber(track).build();
                 sendQuestion(id, "Данные об отслеживании посылки не найдены. " +
                         "Хотите получать уведомления о статусе посылки?", answerYes, answerNo);
                 userPackageTrackingStatus.put(id, packageDto);
-            }
-            else if (packageDto==null && trackingCommand.serviceDefinition(track)==null){   //если посылка не найдена, и передан не трек-номер
+            } else if (packageDto == null && trackingCommand.serviceDefinition(track) == null) {   //если посылка не найдена, и передан не трек-номер
                 sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
-            }
-            else if (packageDto!=null){ //если посылка найдена
+            } else if (packageDto != null) { //если посылка найдена
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.DELIVERED)) //и уже доставлена
                     sendResponse(id.toString(), "Посылка доставлена, поменять статус отслеживания нельзя.");
                 else {
@@ -381,31 +409,31 @@ public class TelegramBot extends TelegramLongPollingBot {
                     userPackageTrackingStatus.put(id, packageDto);
                 }
             }
-        }else {
+        } else {
             sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
         }
     }
 
     /**
      * Обработка ответа об изменении статуса отслеживания
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найдена запись посылки или статуса
      */
     private void processingStatusChange(String userMessage, Long id) throws Exception {
         PackageDto packageDto = userPackageTrackingStatus.get(id);
-        if (packageDto.getNameTrackingStatus()!=null) {  //если посылка уже есть в бд
-            if (userMessage.equals(answerYes)){ //и ответ утвердительный - меняем статус на противоположный
+        if (packageDto.getNameTrackingStatus() != null) {  //если посылка уже есть в бд
+            if (userMessage.equals(answerYes)) { //и ответ утвердительный - меняем статус на противоположный
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.TRACKED))
                     packageDto.setNameTrackingStatus(AppConstants.NO_TRACKED);
                 else if (packageDto.getNameTrackingStatus().equals(AppConstants.NO_TRACKED))
                     packageDto.setNameTrackingStatus(AppConstants.TRACKED);
                 packageCommand.changeTrackingStatus(packageDto);
-                sendResponseAndDeleteKeyboard(id.toString(), "Изменения сохранены, посылка "+packageDto.getNameTrackingStatus().toLowerCase());
+                sendResponseAndDeleteKeyboard(id.toString(), "Изменения сохранены, посылка " + packageDto.getNameTrackingStatus().toLowerCase());
             }
-        }
-        else{   //если посылки в бд еще нет
-            if (userMessage.equals(answerYes)){ //и ответ утвердительный
+        } else {   //если посылки в бд еще нет
+            if (userMessage.equals(answerYes)) { //и ответ утвердительный
                 packageDto.setNameTrackingStatus(AppConstants.TRACKED);
                 userPackageTrackingStatus.remove(id);
                 userPackage.put(id, packageDto);    //добавляем посылку в мапу для создания посылки
@@ -417,14 +445,16 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
         }
     }
+
     /**
      * Отправка пользователю вопроса и добавление кнопок-ответов
-     * @param chatId id пользователя
-     * @param question строка-вопрос
-     * @param firstAnswer первый возможный ответ
+     *
+     * @param chatId       id пользователя
+     * @param question     строка-вопрос
+     * @param firstAnswer  первый возможный ответ
      * @param secondAnswer второй возможный ответ
      */
-    private void sendQuestion(long chatId, String question, String firstAnswer, String secondAnswer){
+    private void sendQuestion(long chatId, String question, String firstAnswer, String secondAnswer) {
         SendMessage message = new SendMessage();    //формирование сообщения
         message.setChatId(String.valueOf(chatId));
         message.setText(question);
@@ -440,5 +470,76 @@ public class TelegramBot extends TelegramLongPollingBot {
         keyboardMarkup.setKeyboard(keyboard);
         message.setReplyMarkup(keyboardMarkup);
         sendMessage(message);
+    }
+
+    /**
+     * Создание кнопок и вопроса пользователю после команды report
+     *
+     * @param chatId id чата пользователя
+     */
+    private void reportOption(long chatId) {
+        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+
+        // Первая строка с кнопками
+        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        row1.add(createInlineKeyboardButton("1 день", "report_period_1day"));
+        row1.add(createInlineKeyboardButton("1 неделя", "report_period_1week"));
+        rows.add(row1);
+
+        // Вторая строка с кнопками
+        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        row2.add(createInlineKeyboardButton("1 месяц", "report_period_1month"));
+        row2.add(createInlineKeyboardButton("3 месяца", "report_period_3months"));
+        rows.add(row2);
+
+        // Третья строка с кнопкой
+        List<InlineKeyboardButton> row3 = new ArrayList<>();
+        row3.add(createInlineKeyboardButton("6 месяцев", "report_period_6months"));
+        rows.add(row3);
+
+        keyboardMarkup.setKeyboard(rows);
+
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Выберите промежуток времени для отчета:");
+        message.setReplyMarkup(keyboardMarkup);
+
+        sendMessage(message);
+    }
+
+    /**
+     * Создание инлайн кнопок
+     *
+     * @param text         текст для кнопок
+     * @param callbackData данные для отправки боту
+     * @return созданные кнопки
+     */
+    private InlineKeyboardButton createInlineKeyboardButton(String text, String callbackData) {
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(text);
+        button.setCallbackData(callbackData);
+        return button;
+    }
+
+    /**
+     * Отправка документа пользователю
+     *
+     * @param chatId     id пользователя
+     * @param fileStream поток с файлом
+     * @param fileName   название файла
+     */
+    public void sendDocument(long chatId, ByteArrayOutputStream fileStream, String fileName) {
+        SendDocument sendDocument = new SendDocument();
+        sendDocument.setChatId(chatId);
+
+        InputFile inputFile = new InputFile(new ByteArrayInputStream(fileStream.toByteArray()), fileName);
+        sendDocument.setDocument(inputFile);
+
+        try {
+            execute(sendDocument);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
