@@ -43,6 +43,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
     private final ReportCommand reportCommand;
+    private final ViewUsersCommand viewUsersCommand;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -94,12 +95,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
 
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand, ViewUsersCommand viewUsersCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
         this.messageService = messageService;
         this.packageCommand = packageCommand;
         this.reportCommand = reportCommand;
+        this.viewUsersCommand = viewUsersCommand;
     }
 
     @Override
@@ -160,9 +162,16 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingPackage(userMessage, id);
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
-                } else if (userMessage.equals("/report")) {
+                }
+                // Обработка команды /report
+                else if (userMessage.equals("/report")) {
                     reportOption(longChatId);
-                } else {
+                }
+                // Обработка команды /view_users
+                else if (userMessage.equals("/view_users")){
+                    viewUsersCommand.execute(longChatId);
+                }
+                else {
                     // Логика ответа на другие сообщения
                     String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                     sendResponse(chatId, botResponse);
