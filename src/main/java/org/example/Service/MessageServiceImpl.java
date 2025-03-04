@@ -29,8 +29,10 @@ public class MessageServiceImpl implements ServiceInterface<MessageDto> {
     public void save(MessageDto messageDto) {
         Message message = modelMapper.map(messageDto,Message.class);
         User user = userService.findById(messageDto.getIdUser());
-        message.setUser(user);
-        messageRepository.save(message);
+        if (user!=null) {
+            message.setUser(user);
+            messageRepository.save(message);
+        }
     }
 
     @Override

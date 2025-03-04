@@ -1,7 +1,9 @@
 package org.example.Command;
 
+import org.example.AppConstants;
 import org.example.Dto.UserDto;
 import org.example.Service.EmailService;
+import org.example.Service.PasswordUtil;
 import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -51,7 +53,7 @@ public class StartCommand {
 
     @Transactional
     public boolean createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) throws Exception {
-        UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, 2L, email, password);
+        UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, AppConstants.STATUS_USER, email, password);
         userService.save(user);  // Добавляем пользователя в базу данных
         return userService.isUserExist(userId);
     }
@@ -65,16 +67,21 @@ public class StartCommand {
     }
 
     /**
-     * Обновления данных обычного пользователя
-     * @param userDto дто пользователя
+     *
+     * @param idUser
+     * @param email
      * @return true - администратор успешно создан, иначе - false
      * @throws Exception не найдена сущность статуса
      */
-    public boolean updateAdminUser(UserDto userDto) throws Exception {
-        if (!userService.isUserExist(userDto.getId())) return false;    //если данных о пользователе нет
+    public boolean updateAdminUser(Long idUser, String email) throws Exception {
+        if (!userService.isUserExist(idUser)) return false;    //если данных о пользователе нет
         else{   //данные есть - формируем и отправляем пароль
-            String password = emailService.sendPassword(userDto.getEmail());
-            userService.updateUserToAdmin(userDto, password);   //обновляем данные о пользователе
+            UserDto userDto = userService.get(idUser);
+            userDto.setEmail(email);
+            //String password = emailService.sendPassword(userDto.getEmail());
+            userDto.setNameStatus(AppConstants.STATUS_ADMIN);
+            userDto.setPassword(PasswordUtil.hashPassword("aaa"));
+            userService.save(userDto);   //обновляем данные о пользователе
             return true;
         }
     }

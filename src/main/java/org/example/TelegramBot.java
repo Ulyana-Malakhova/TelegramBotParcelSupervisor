@@ -36,6 +36,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final StartCommand startCommand;
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
+    private final AdminDataCommand adminDataCommand;
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -86,11 +87,13 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties,MessageServiceImpl messageService, PackageCommand packageCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService,
+                       PackageCommand packageCommand, AdminDataCommand adminDataCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
         this.messageService=messageService;
         this.packageCommand = packageCommand;
+        this.adminDataCommand = adminDataCommand;
     }
 
     @Override
@@ -135,6 +138,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingDeleteName(userMessage, id);
                 } else if (userMessage.startsWith("/add_name")) {
                     processingAddName(userMessage, id);
+                } else if (userMessage.startsWith("/change_email")){
+                    processingChangeEmail(userMessage, id);
                 } else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
                 } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
@@ -341,8 +346,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (userQuestions.get(id).equals(questionEmail)) { //если бот ожидает ввод почты
             if (isValidEmail(userMessage)) {    //и почта введена по шаблону
                 sendResponse(idString, "Подождите...");
-                UserDto userDto = UserDto.builder().id(id).email(userMessage).build();
-                if (startCommand.updateAdminUser(userDto))  //меняем данные о пользователе
+                if (startCommand.updateAdminUser(id, userMessage))  //меняем данные о пользователе
                     sendResponse(idString, "Пароль отправлен на почту");
                 else
                     sendResponse(idString, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
@@ -418,6 +422,15 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (userMessage.equals(answerNo)) {
             userPackageTrackingStatus.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
+        }
+    }
+    private void processingChangeEmail(String userMessage, Long id) throws Exception {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))){ //если почта введена и соответствует шаблону
+            adminDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1));
+            sendResponse(id.toString(), "Адрес почты изменен.");
+        } else {
+            sendResponse(id.toString(), "Неправильный формат электронной почты. Введите почту правильно");
         }
     }
     /**
