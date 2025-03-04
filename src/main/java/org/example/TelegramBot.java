@@ -134,6 +134,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingTrack(userMessage, id);
                 } else if (userMessage.equals("/saved_parcels")) {
                     sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
+                } else if(userMessage.equals("/change_password")){
+                    processingChangePassword(id);
                 } else if (userMessage.startsWith("/delete_name")) {
                     processingDeleteName(userMessage, id);
                 } else if (userMessage.startsWith("/add_name")) {
@@ -424,14 +426,33 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
         }
     }
+
+    /**
+     * Обработка команды изменения почты
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception не найден статус пользователя
+     */
     private void processingChangeEmail(String userMessage, Long id) throws Exception {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))){ //если почта введена и соответствует шаблону
-            adminDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1));
-            sendResponse(id.toString(), "Адрес почты изменен.");
+            if (adminDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
+                sendResponse(id.toString(), "Адрес почты изменен.");
+            else sendResponse(id.toString(), "Не удалось изменить адрес почты.");
         } else {
             sendResponse(id.toString(), "Неправильный формат электронной почты. Введите почту правильно");
         }
+    }
+
+    /**
+     * Обработка команды изменения почты
+     * @param id id пользователя
+     * @throws Exception не найден статус пользователя
+     */
+    private void processingChangePassword(Long id) throws Exception {
+        sendResponse(id.toString(), "Подождите...");
+        if (adminDataCommand.updatePassword(id)) sendResponse(id.toString(), "Пароль отправлен на почту");
+        else sendResponse(id.toString(), "Не удалось изменить пароль.");
     }
     /**
      * Отправка пользователю вопроса и добавление кнопок-ответов

@@ -78,9 +78,9 @@ public class StartCommand {
         else{   //данные есть - формируем и отправляем пароль
             UserDto userDto = userService.get(idUser);
             userDto.setEmail(email);
-            //String password = emailService.sendPassword(userDto.getEmail());
+            String password = emailService.sendPassword(userDto.getEmail());
             userDto.setNameStatus(AppConstants.STATUS_ADMIN);
-            userDto.setPassword(PasswordUtil.hashPassword("aaa"));
+            userDto.setPassword(PasswordUtil.hashPassword(password));
             userService.save(userDto);   //обновляем данные о пользователе
             return true;
         }
