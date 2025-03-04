@@ -9,7 +9,9 @@ import org.example.Command.*;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
 import org.example.Service.MessageServiceImpl;
+import org.example.Service.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -37,6 +39,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
     private final AdminDataCommand adminDataCommand;
+    private final Set<Long> authorizedAdmins = new HashSet<>();
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -49,6 +52,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для сохранения промежуточной информации о посылках при изменении статуса отслеживания
      */
     private final Map<Long, PackageDto> userPackageTrackingStatus = new HashMap<>();
+    /**
+     * Мапа для сохранения dto для проверки пароля администратора
+     */
+    private final Map<Long, UserDto> adminAuthDTO = new HashMap<>();
     /**
      * Вопрос-ожидание токена
      */
@@ -136,7 +143,13 @@ public class TelegramBot extends TelegramLongPollingBot {
                     sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
                 } else if(userMessage.equals("/change_password")){
                     processingChangePassword(id);
-                } else if (userMessage.startsWith("/delete_name")) {
+                } else if (userMessage.equals("/auth")){
+                    processingAuthorization(id);
+                }
+                else if (userMessage.equals("/exit")){
+                    processingExit(id);
+                }
+                else if (userMessage.startsWith("/delete_name")) {
                     processingDeleteName(userMessage, id);
                 } else if (userMessage.startsWith("/add_name")) {
                     processingAddName(userMessage, id);
@@ -150,7 +163,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingPackage(userMessage, id);
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
-                } else {
+                } else if (adminAuthDTO.containsKey(id)){
+                    passwordCheck(userMessage, id);
+                }
+                else {
                     // Логика ответа на другие сообщения
                     String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                     sendResponse(chatId, botResponse);
@@ -453,6 +469,33 @@ public class TelegramBot extends TelegramLongPollingBot {
         sendResponse(id.toString(), "Подождите...");
         if (adminDataCommand.updatePassword(id)) sendResponse(id.toString(), "Пароль отправлен на почту");
         else sendResponse(id.toString(), "Не удалось изменить пароль.");
+    }
+    private void processingAuthorization(Long id){
+        UserDto userDto = adminDataCommand.getAdminDto(id);
+        if (userDto==null) sendResponse(id.toString(), "Вы не являетесь админом.");
+        else{
+            sendResponse(id.toString(), "Введите пароль.");
+            adminAuthDTO.put(id, userDto);
+        }
+    }
+    private void passwordCheck(String userMessage, Long id){
+        UserDto userDto = adminAuthDTO.get(id);
+        if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())){
+            sendResponse(id.toString(), "Вы успешно вошли в режим администратора.");
+            authorizedAdmins.add(id);
+            adminAuthDTO.remove(id);
+        }
+        else {
+            sendResponse(id.toString(), "Неверный пароль.");
+            adminAuthDTO.remove(id);
+        }
+    }
+    private void processingExit(Long id){
+        if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), "Вы не находитесь в режиме администратора.");
+        else{
+            authorizedAdmins.remove(id);
+            sendResponse(id.toString(), "Вы вышли из режима администратора.");
+        }
     }
     /**
      * Отправка пользователю вопроса и добавление кнопок-ответов

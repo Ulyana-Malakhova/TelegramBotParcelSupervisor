@@ -50,4 +50,9 @@ public class AdminDataCommand {
         userService.save(userDto);
         return true;
     }
+    public UserDto getAdminDto(Long id){
+        UserDto userDto = userService.get(id);
+        if (userDto== null || !userDto.getNameStatus().equals(AppConstants.STATUS_ADMIN)) return null;
+        else return userDto;
+    }
 }
