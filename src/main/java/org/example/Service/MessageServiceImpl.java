@@ -44,4 +44,16 @@ public class MessageServiceImpl implements ServiceInterface<MessageDto> {
         }
         return messageDto;
     }
+    public MessageDto getLatest(Long userId){
+        Optional<Message> messageOptional = messageRepository.findLatestMessageByUserId(userId);
+        if (messageOptional.isPresent()) {
+            Message message = messageOptional.get();
+            MessageDto messageDto = modelMapper.map(message, MessageDto.class);
+            messageDto.setIdUser(message.getUser().getId());
+            return messageDto;
+        }
+        else
+            return null;
+
+    }
 }

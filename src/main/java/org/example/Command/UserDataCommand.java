@@ -9,14 +9,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class AdminDataCommand {
+public class UserDataCommand {
     /**
      * Сервис для объектов пользователей
      */
     private final UserServiceImpl userService;
     private final EmailService emailService;
     @Autowired
-    public AdminDataCommand(UserServiceImpl userService, EmailService emailService) {
+    public UserDataCommand(UserServiceImpl userService, EmailService emailService) {
         this.userService = userService;
         this.emailService = emailService;
     }
