@@ -53,11 +53,6 @@ public class UserServiceImpl implements ServiceInterface<UserDto>{
                 user.get().getEmail(), user.get().getPassword());
         return userDto;
     }
-    public User getEntity(Long id) throws Exception {
-        Optional<User> user = userRepository.findById(id);
-        if (user.isPresent()) return user.get();
-        else throw new Exception("Пользователен с данным id не найден");
-    }
 
     /**
      * Проверка, существует ли в БД пользователь с данным id чата

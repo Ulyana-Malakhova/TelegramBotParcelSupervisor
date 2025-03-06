@@ -50,9 +50,43 @@ public class UserDataCommand {
         userService.save(userDto);
         return true;
     }
+
+    /**
+     * Получение dto пользователя-админа
+     * @param id идентификатор пользователя
+     * @return dto, если пользователь является админом, иначе - null
+     */
     public UserDto getAdminDto(Long id){
         UserDto userDto = userService.get(id);
         if (userDto== null || !userDto.getNameStatus().equals(AppConstants.STATUS_ADMIN)) return null;
         else return userDto;
+    }
+
+    /**
+     *
+     * @param id
+     * @return
+     */
+    public String getStatusUser(Long id){
+        UserDto userDto = userService.get(id);
+        return userDto!=null ? userDto.getNameStatus(): null;
+    }
+
+    /**
+     * Изменение статуса админа на обычного пользователя
+     * @param id id пользователя
+     * @return true - успешно изменено, иначе - false
+     * @throws Exception не найден статус
+     */
+    public boolean updateAdminToUser(Long id) throws Exception {
+        UserDto userDto = userService.get(id);
+        if (userDto==null) return false;
+        else{
+            userDto.setEmail(null);
+            userDto.setPassword(null);
+            userDto.setNameStatus(AppConstants.STATUS_USER);
+            userService.save(userDto);
+            return true;
+        }
     }
 }
