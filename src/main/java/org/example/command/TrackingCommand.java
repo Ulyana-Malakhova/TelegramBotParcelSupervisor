@@ -130,7 +130,7 @@ public class TrackingCommand {
      * @param trackingNumber трек-номер
      * @return true - в номере только цифры, иначе - false
      */
-    private boolean isOnlyNumbers(String trackingNumber){
+    public boolean isOnlyNumbers(String trackingNumber){
         return trackingNumber.matches("^\\d+$");
     }
 }

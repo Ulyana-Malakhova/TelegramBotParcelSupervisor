@@ -7,5 +7,6 @@ public final class AppConstants {
     public static final String CANCELED = "Отменено";
     public static final String STATUS_USER = "User";
     public static final String STATUS_ADMIN = "Admin";
+    public static final String STATUS_BLOCKED = "Blocked";
 
 }

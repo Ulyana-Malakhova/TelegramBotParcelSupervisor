@@ -13,6 +13,7 @@ import org.example.Service.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
@@ -33,8 +34,8 @@ import java.util.regex.Pattern;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
-    private static final long THIRTY_MINUTES_IN_MILLIS = 60;
-    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private static final long THIRTY_MINUTES_IN_MILLIS = 1800;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final BotProperties botProperties;
     private final HelpCommand helpCommand = new HelpCommand();
     private final AboutCommand aboutCommand = new AboutCommand();
@@ -43,6 +44,9 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
     private final UserDataCommand userDataCommand;
+    /**
+     * Множество id пользователей, находящихся в режиме администратора
+     */
     private final Set<Long> authorizedAdmins = new HashSet<>();
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
@@ -60,6 +64,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для сохранения dto для проверки пароля администратора
      */
     private final Map<Long, UserDto> adminAuthDTO = new HashMap<>();
+    /**
+     * Мапа для хранения данных при изменении статуса пользователя
+     */
+    private final Map<Long, Map<Long, String>> userUpdateStatus = new HashMap<>();
     /**
      * Вопрос-ожидание токена
      */
@@ -107,9 +115,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.userDataCommand = userDataCommand;
         start();
     }
+
+    /**
+     * Запуск выполнения функции с определенным интервалом
+     */
     public void start() {
-        scheduler.scheduleAtFixedRate(this::checkUserMessages, 0, 1, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(this::checkUserMessages, 0, 5, TimeUnit.MINUTES);
     }
+
+    /**
+     * Выход из режима администратора для неактивных пользователей
+     */
     private void checkUserMessages() {
         Set<Long> usersToRemove = new HashSet<>();
         for (Long id: authorizedAdmins){
@@ -174,6 +190,8 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingAddName(userMessage, id);
                 } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)){
                     processingChangeEmail(userMessage, id);
+                } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
+                    processingSetUserRole(userMessage, id);
                 }
                 else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
@@ -184,7 +202,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
                 } else if (adminAuthDTO.containsKey(id)){
-                    passwordCheck(userMessage, id);
+                    passwordCheck(userMessage, id, update.getMessage().getMessageId());
+                }
+                else if (userUpdateStatus.containsKey(id)){
+                    statusChange(userMessage, id);
                 }
                 else {
                     // Логика ответа на другие сообщения
@@ -384,11 +405,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (userQuestions.get(id).equals(questionEmail)) { //если бот ожидает ввод почты
             if (isValidEmail(userMessage)) {    //и почта введена по шаблону
                 sendResponse(idString, "Подождите...");
-                if (startCommand.updateAdminUser(id, userMessage))  //меняем данные о пользователе
+                if (startCommand.updateAdminUser(id, userMessage)) {  //меняем данные о пользователе
                     sendResponse(idString, "Пароль отправлен на почту");
+                    userQuestions.remove(id);
+                }
                 else
                     sendResponse(idString, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
-                userQuestions.remove(id);
             } else {
                 sendResponse(idString, "Неправильный формат электронной почты. Введите почту правильно");
             }
@@ -490,6 +512,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (userDataCommand.updatePassword(id)) sendResponse(id.toString(), "Пароль отправлен на почту");
         else sendResponse(id.toString(), "Не удалось изменить пароль.");
     }
+
+    /**
+     * Обработка команды авторизации
+     * @param id id пользователя
+     */
     private void processingAuthorization(Long id){
         UserDto userDto = userDataCommand.getAdminDto(id);
         if (userDto==null) sendResponse(id.toString(), "Вы не являетесь админом.");
@@ -498,7 +525,15 @@ public class TelegramBot extends TelegramLongPollingBot {
             adminAuthDTO.put(id, userDto);
         }
     }
-    private void passwordCheck(String userMessage, Long id){
+
+    /**
+     * Проверка правильности введенного пароля
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @param messageId id сообщения с паролем
+     * @throws TelegramApiException ошибка при попытке удалить сообщение с паролем
+     */
+    private void passwordCheck(String userMessage, Long id, Integer messageId) throws TelegramApiException {
         UserDto userDto = adminAuthDTO.get(id);
         if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())){
             sendResponse(id.toString(), "Вы успешно вошли в режим администратора.");
@@ -509,12 +544,83 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendResponse(id.toString(), "Неверный пароль.");
             adminAuthDTO.remove(id);
         }
+        execute(new DeleteMessage(id.toString(), messageId));
     }
+
+    /**
+     * Обработка выхода из режима администратора
+     * @param id id пользователя
+     */
     private void processingExit(Long id){
         if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), "Вы не находитесь в режиме администратора.");
         else{
             authorizedAdmins.remove(id);
             sendResponse(id.toString(), "Вы вышли из режима администратора.");
+        }
+    }
+
+    /**
+     * Обработка изменения роли другого пользователя
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     */
+    private void processingSetUserRole(String userMessage, Long id){
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1 && trackingCommand.isOnlyNumbers(userMessage.substring(spaceIndex + 1))) {
+            Long idUser = Long.parseLong(userMessage.substring(spaceIndex + 1));
+            String status = userDataCommand.getStatusUser(idUser);
+            if (status == null) sendResponse(id.toString(), "Пользователь не найден.");
+            else {
+                HashMap<Long, String> idUserStatus = new HashMap<>();
+                if (status.equals(AppConstants.STATUS_BLOCKED))
+                    sendResponse(id.toString(), "Пользователь заблокирован, для него нельзя изменить роль.");
+                else if (status.equals(AppConstants.STATUS_ADMIN)) {
+                    idUserStatus.put(idUser, status);
+                    userUpdateStatus.put(id, idUserStatus);
+                    sendQuestion(id, "Данный пользователь является администратором. " +
+                            "Изменить его роль на обычного пользователя?", answerYes, answerNo);
+                }
+                else if (status.equals(AppConstants.STATUS_USER)) {
+                    idUserStatus.put(idUser, status);
+                    userUpdateStatus.put(id, idUserStatus);
+                    sendQuestion(id, "Данный пользователь не является администратором. " +
+                            "Изменить его роль на администратора?", answerYes, answerNo);
+                }
+            }
+        }
+        else sendResponse(id.toString(), "Введите правильный id пользователя");
+    }
+
+    /**
+     * Изменение статуса пользователя в зависимости от полученного ответа
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     * @throws Exception не найден статус или пользователь
+     */
+    private void statusChange(String userMessage, Long id) throws Exception {
+        if (userMessage.equals(answerYes)){
+            Map<Long, String> idUserStatus = userUpdateStatus.get(id);
+            userUpdateStatus.remove(id);
+            for (Long idUser: idUserStatus.keySet()){
+                if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)){
+                    adminAuthDTO.remove(idUser);
+                    if (userDataCommand.updateAdminToUser(id)) {
+                        sendResponseAndDeleteKeyboard(id.toString(), "Роль пользователя изменена");
+                        sendResponse(idUser.toString(), "Ваша роль была изменена с администратора на обычного пользователя");
+                    }
+                    else sendResponseAndDeleteKeyboard(id.toString(), "Произошла ошибка");
+                }
+                else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)){
+                    sendResponseAndDeleteKeyboard(id.toString(), "Пользователю отправлен запрос на регистрацию");
+                    sendResponse(idUser.toString(), "Вас назначили администратором. Введите почту, на которую будет выслан пароль");
+                    userQuestions.put(idUser, questionEmail);
+                }
+            }
+
+        }
+        else if (userMessage.equals(answerNo)){
+            userUpdateStatus.remove(id);
+            sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
         }
     }
     /**

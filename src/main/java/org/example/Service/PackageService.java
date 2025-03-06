@@ -94,7 +94,7 @@ public class PackageService {
     /**
      * Добавление имени посылке
      * @param packageDto dto-объект со всеми данными посылки
-     * @throws Exception если посылка с таким именем уже существует у пользователя
+     * @throws Exception если посылка с таким именем уже существует у пользователя или сам пользователь не найден в бд
      */
     public void addName(PackageDto packageDto) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(packageDto.getIdUser(),
@@ -103,9 +103,10 @@ public class PackageService {
         Package packageEntity = modelMapper.map(packageDto, Package.class);
         Role role = roleService.findByName(packageDto.getNameRole());
         TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
-        User user = userService.getEntity(packageDto.getIdUser());
+        User user = userService.findById(packageDto.getIdUser());
+        if (user!=null) packageEntity.setUserEntity(user);
+        else throw new Exception("Пользователь не найден");
         packageEntity.setRoleEntity(role);
-        packageEntity.setUserEntity(user);
         packageEntity.setTrackingStatusEntity(trackingStatus);
         packageRepository.save(packageEntity);
     }
