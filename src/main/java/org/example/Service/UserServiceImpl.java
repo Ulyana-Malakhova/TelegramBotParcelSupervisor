@@ -3,6 +3,7 @@ package org.example.Service;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.example.AppConstants;
 import org.example.Entity.Status;
 import org.example.Entity.User;
 import org.example.Dto.UserDto;
@@ -21,9 +22,6 @@ import java.util.Optional;
 public class UserServiceImpl implements ServiceInterface<UserDto> {
     private final UserRepository userRepository;
     private final StatusServiceImpl statusService;
-    private final String statusUser = "User";
-    private final String statusBlocked = "Blocked";
-    private final String statusAdmin = "Admin";
     private final ModelMapper modelMapper;
 
     @Autowired
@@ -38,7 +36,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         List<User> users = userRepository.findAll();
         List<UserDto> userDtos = new ArrayList<>();
         for (User user : users) {
-            userDtos.add(new UserDto(user.getId(), user.getName(), user.getSurname(), user.getUsername(), user.getPhoneNumber(), user.getStatus().getIdStatus(), user.getEmail(), user.getPassword()));
+            userDtos.add(new UserDto(user.getId(), user.getName(), user.getSurname(), user.getUsername(), user.getPhoneNumber(), user.getStatus().getStatusName(), user.getEmail(), user.getPassword()));
         }
         return userDtos;
     }
@@ -46,7 +44,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
     @Override
     public void save(UserDto userDto) throws Exception {
         User userEntity = modelMapper.map(userDto, User.class);
-        Status status = getStatus(statusUser);
+        Status status = getStatus(userDto.getNameStatus());
         if (status != null) {
             userEntity.setStatus(status);
             userRepository.save(userEntity);
@@ -58,16 +56,16 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         UserDto userDto = null;
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) userDto = new UserDto(user.get().getId(), user.get().getName(), user.get().getSurname(),
-                user.get().getUsername(), user.get().getPhoneNumber(), user.get().getStatus().getIdStatus(),
+                user.get().getUsername(), user.get().getPhoneNumber(), user.get().getStatus().getStatusName(),
                 user.get().getEmail(), user.get().getPassword());
         return userDto;
     }
-
+/*
     public User getEntity(Long id) throws Exception {
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) return user.get();
         else throw new Exception("Пользователен с данным id не найден");
-    }
+    }*/
 
     /**
      * Проверка, существует ли в БД пользователь с данным id чата
@@ -86,7 +84,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @return true - администратор есть, иначе - false
      */
     public boolean isAdministratorRegistered() throws Exception {
-        Status status = getStatus(statusAdmin);
+        Status status = getStatus(AppConstants.STATUS_ADMIN);
         List<User> admins = userRepository.findByStatus(status);
         return !admins.isEmpty();
     }
@@ -112,7 +110,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception не найдена сущность статуса
      */
     public void updateUserToAdmin(UserDto userDto, String password) throws Exception {
-        Status status = getStatus(statusAdmin);
+        Status status = getStatus(AppConstants.STATUS_ADMIN);
         Optional<User> currentUserOptional = userRepository.findById(userDto.getId());
         if (currentUserOptional.isPresent() && status != null) {
             User currentUser = currentUserOptional.get();
@@ -141,7 +139,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportActiveUsersToExcel() throws Exception {
-        Status status = getStatus(statusUser);
+        Status status = getStatus(AppConstants.STATUS_USER);
         List<User> users = userRepository.findByStatus(status);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
@@ -176,7 +174,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportBlockedUsersToExcel() throws Exception {
-        Status status = getStatus(statusBlocked);
+        Status status = getStatus(AppConstants.STATUS_BLOCKED);
         List<User> blockedUsers = userRepository.findByStatus(status);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
@@ -211,7 +209,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportAdminsToExcel() throws Exception {
-        Status status = getStatus(statusAdmin);
+        Status status = getStatus(AppConstants.STATUS_ADMIN);
         List<User> admins = userRepository.findByStatus(status);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
