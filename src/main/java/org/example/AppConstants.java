@@ -9,4 +9,5 @@ public final class AppConstants {
     public static final String STATUS_ADMIN = "Admin";
     public static final String STATUS_BLOCKED = "Blocked";
 
+
 }
