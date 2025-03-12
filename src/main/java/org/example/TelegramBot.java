@@ -46,6 +46,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final HelpCommand helpCommand = new HelpCommand();
     private final AboutCommand aboutCommand = new AboutCommand();
     private final TrackingCommand trackingCommand = new TrackingCommand();
+    private final MessageTemplateCommand messageTemplateCommand;
     private final StartCommand startCommand;
     private final MessageServiceImpl messageService;
     private final PackageCommand packageCommand;
@@ -117,9 +118,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     private static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
 
     @Autowired
-    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageServiceImpl messageService, PackageCommand packageCommand, ReportCommand reportCommand, ViewUsersCommand viewUsersCommand, ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand, UserDataCommand userDataCommand) {
+    public TelegramBot(StartCommand startCommand, BotProperties botProperties, MessageTemplateCommand messageTemplateCommand,
+                       MessageServiceImpl messageService, PackageCommand packageCommand,
+                       ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
+                       ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
+                       UserDataCommand userDataCommand) {
         this.startCommand = startCommand;
         this.botProperties = botProperties;
+        this.messageTemplateCommand = messageTemplateCommand;
         this.messageService = messageService;
         this.packageCommand = packageCommand;
         this.userDataCommand = userDataCommand;
@@ -215,6 +221,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingChangeEmail(userMessage, id);
                 } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
                     processingSetUserRole(userMessage, id);
+                }
+                else if (userMessage.equals("/view_templates")){
+                    messageTemplateCommand.sendTemplates(id);
                 }
                 else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
