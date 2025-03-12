@@ -6,6 +6,7 @@ import org.example.Command.HelpCommand;
 import org.example.Command.TrackingCommand;
 import org.example.Dto.MessageDto;
 import org.example.Command.*;
+import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
 import org.example.Service.MessageServiceImpl;
@@ -79,6 +80,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Мапа для хранения данных при изменении статуса пользователя
      */
     private final Map<Long, Map<Long, String>> userUpdateStatus = new HashMap<>();
+    /**
+     * Мапа для сохранения данных при изменении шаблона сообщения
+     */
+    private final Map<Long, MessageTemplateDto> updateTemplate = new HashMap<>();
     /**
      * Вопрос-ожидание токена
      */
@@ -186,8 +191,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
             MessageDto messageDto = new MessageDto(RandomUtils.nextLong(0L, 9999L), userMessage, dateUserMessage, userId);
-            messageService.save(messageDto);
             try {
+                messageService.save(messageDto);
                 // Обработка команды /start
                 if (userMessage.equals("/start")) {
                     sendMessage(startCommand.execute(update));
@@ -222,8 +227,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                 } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
                     processingSetUserRole(userMessage, id);
                 }
-                else if (userMessage.equals("/view_templates")){
-                    messageTemplateCommand.sendTemplates(id);
+                else if (userMessage.equals("/view_templates") && authorizedAdmins.contains(id)){
+                    ByteArrayOutputStream stream = messageTemplateCommand.sendTemplates();
+                    sendDocument(id, stream, "view_templates.xlsx");
+                }
+                else if (userMessage.startsWith("/set_template") && authorizedAdmins.contains(id)){
+                    processingSetTemplate(userMessage, id);
                 }
                 else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
@@ -239,6 +248,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
                 else if (userUpdateStatus.containsKey(id)){
                     statusChange(userMessage, id);
+                }
+                else if (updateTemplate.containsKey(id)){
+                    updateMessageTemplate(userMessage, id);
                 }
                 // Обработка команды /report
                 else if (userMessage.equals("/report")) {
@@ -650,6 +662,51 @@ public class TelegramBot extends TelegramLongPollingBot {
         else sendResponse(id.toString(), "Введите правильный id пользователя");
     }
 
+    /**
+     * Обработка команды обновления шаблона сообщения
+     * @param userMessage полученное сообщение
+     * @param id id пользователя
+     */
+    public void processingSetTemplate(String userMessage, Long id){
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex!=-1){
+            String identifierTemplate = userMessage.substring(spaceIndex + 1);
+            MessageTemplateDto messageTemplateDto = null;
+            if (trackingCommand.isOnlyNumbers(identifierTemplate))
+                messageTemplateDto=messageTemplateCommand.findById(Long.parseLong(identifierTemplate));
+            else messageTemplateDto=messageTemplateCommand.findByEvent(identifierTemplate);
+            if (messageTemplateDto==null){
+                sendResponse(id.toString(), "Такой шаблон не найден");
+            }
+            else {
+                updateTemplate.put(id, messageTemplateDto);
+                sendResponse(id.toString(), "Сейчас шаблон имеет следующий текст: "+messageTemplateDto.getText()
+                +". Введите новый текст или отправьте \"Отмена\" для отмены изменений");
+            }
+        }
+        else sendResponse(id.toString(), "Введите id или событие шаблона");
+    }
+
+    /**
+     * Обновление шаблона сообщения
+     * @param userMessage текст нового шаблона
+     * @param id id пользователя
+     * @throws Exception не найден пользователь
+     */
+    public void updateMessageTemplate(String userMessage, Long id) throws Exception {
+        if (userMessage.equals("Отмена")){
+            sendResponse(id.toString(), "Отмена изменений");
+        }
+        else{
+            MessageTemplateDto messageTemplateDto = updateTemplate.get(id);
+            messageTemplateDto.setText(userMessage);
+            messageTemplateDto.setIdAuthorUser(id);
+            messageTemplateDto.setEditDate(new Date());
+            messageTemplateCommand.update(messageTemplateDto);
+            sendResponse(id.toString(), "Шаблон обновлен");
+        }
+        updateTemplate.remove(id);
+    }
     /**
      * Изменение статуса пользователя в зависимости от полученного ответа
      * @param userMessage полученное сообщение

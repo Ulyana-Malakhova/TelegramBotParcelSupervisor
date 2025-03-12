@@ -26,13 +26,14 @@ public class MessageServiceImpl implements ServiceInterface<MessageDto> {
     }
 
     @Override
-    public void save(MessageDto messageDto) {
+    public void save(MessageDto messageDto) throws Exception {
         Message message = modelMapper.map(messageDto,Message.class);
         User user = userService.findById(messageDto.getIdUser());
         if (user!=null) {
             message.setUser(user);
             messageRepository.save(message);
         }
+        else throw new Exception("Пользователь не найденю");
     }
 
     @Override

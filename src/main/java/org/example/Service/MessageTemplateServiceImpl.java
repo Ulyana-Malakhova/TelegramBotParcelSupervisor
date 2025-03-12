@@ -5,29 +5,38 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.example.Dto.MessageDto;
+import org.example.Dto.MessageTemplateDto;
+import org.example.Entity.Message;
 import org.example.Entity.MessageTemplate;
 import org.example.Entity.User;
-import org.example.Repository.MessageRepository;
 import org.example.Repository.MessageTemplateRepository;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Сервис для шаблонов сообщений
  */
 @Service
-public class MessageTemplateService {
+public class MessageTemplateServiceImpl implements ServiceInterface<MessageTemplateDto> {
     /**
      * Репозиторий для шаблонов сообщений
      */
     private final MessageTemplateRepository messageTemplateRepository;
+    private final ModelMapper modelMapper;
+    private final UserServiceImpl userService;
 
-    public MessageTemplateService(MessageTemplateRepository messageTemplateRepository) {
+    public MessageTemplateServiceImpl(MessageTemplateRepository messageTemplateRepository, UserServiceImpl userService) {
         this.messageTemplateRepository = messageTemplateRepository;
+        this.modelMapper = new ModelMapper();
+        this.userService = userService;
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
     /**
@@ -74,5 +83,60 @@ public class MessageTemplateService {
         workbook.write(outputStream);
         workbook.close();
         return outputStream;
+    }
+
+    /**
+     * Сохранение шаблона сообщения
+     * @param Dto dto-объект шаблона сообщения
+     * @throws Exception не найден пользователь
+     */
+    @Override
+    public void save(MessageTemplateDto Dto) throws Exception {
+        MessageTemplate messageTemplate = modelMapper.map(Dto,MessageTemplate.class);
+        if (Dto.getIdAuthorUser()!=null) {
+            User user = userService.findById(Dto.getIdAuthorUser());
+            if (user != null) {
+                messageTemplate.setAuthorUser(user);
+                messageTemplateRepository.save(messageTemplate);
+            }
+            else throw new Exception("Пользователь не найден.");
+        }
+    }
+
+    /**
+     * Получение шаблона сообщения по id
+     * @param id id шаблона
+     * @return dto-объект шаблона сообщения
+     */
+    @Override
+    public MessageTemplateDto get(Long id){
+        MessageTemplateDto messageTemplateDto = null;
+        Optional<MessageTemplate> messageTemplateOptional = messageTemplateRepository.findById(id);
+        if(messageTemplateOptional.isPresent()){
+            MessageTemplate messageTemplate = messageTemplateOptional.get();
+            messageTemplateDto = MessageTemplateDto.builder().id(messageTemplate.getId())
+                    .text(messageTemplate.getText()).editDate(messageTemplate.getEditDate())
+                    .event(messageTemplate.getEvent()).build();
+            if (messageTemplate.getAuthorUser()!=null) messageTemplateDto.setIdAuthorUser(messageTemplate.getAuthorUser().getId());
+        }
+        return messageTemplateDto;
+    }
+
+    /**
+     * Получение шаблона сообщения по событию
+     * @param event строка-событие
+     * @return dto-объект шаблона сообщения
+     */
+    public MessageTemplateDto findByEvent(String event){
+        MessageTemplateDto messageTemplateDto = null;
+        Optional<MessageTemplate> messageTemplateOptional = messageTemplateRepository.findByEvent(event);
+        if(messageTemplateOptional.isPresent()){
+            MessageTemplate messageTemplate = messageTemplateOptional.get();
+            messageTemplateDto = MessageTemplateDto.builder().id(messageTemplate.getId())
+                    .text(messageTemplate.getText()).editDate(messageTemplate.getEditDate())
+                    .event(messageTemplate.getEvent()).build();
+            if (messageTemplate.getAuthorUser()!=null) messageTemplateDto.setIdAuthorUser(messageTemplate.getAuthorUser().getId());
+        }
+        return messageTemplateDto;
     }
 }
