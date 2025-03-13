@@ -7,7 +7,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * Обработка команд, связанных с шаблонами сообщений
@@ -60,5 +61,16 @@ public class MessageTemplateCommand {
      */
     public MessageTemplateDto findByEvent(String event){
         return messageTemplateServiceImpl.findByEvent(event);
+    }
+
+    /**
+     * Сохранение шаблонов сообщений из бд в мапу
+     * @param map мапа для сохранения
+     */
+    public void getTemplates(HashMap<String, String> map){
+        List<MessageTemplateDto> messageTemplateDtos = messageTemplateServiceImpl.findAll();
+        for (MessageTemplateDto m: messageTemplateDtos){
+            map.put(m.getEvent(), m.getText());
+        }
     }
 }

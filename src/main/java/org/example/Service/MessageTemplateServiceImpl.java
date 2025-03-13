@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -138,5 +139,21 @@ public class MessageTemplateServiceImpl implements ServiceInterface<MessageTempl
             if (messageTemplate.getAuthorUser()!=null) messageTemplateDto.setIdAuthorUser(messageTemplate.getAuthorUser().getId());
         }
         return messageTemplateDto;
+    }
+
+    /**
+     * Получение списка всех шаблонов
+     * @return список dto-объектов шаблонов
+     */
+    public List<MessageTemplateDto> findAll(){
+        List<MessageTemplateDto> messageTemplateDtos = new ArrayList<>();
+        List<MessageTemplate> messageTemplates = messageTemplateRepository.findAll();
+        for (MessageTemplate message: messageTemplates){
+            MessageTemplateDto messageDto = MessageTemplateDto.builder().id(message.getId()).event(message.getEvent())
+                    .editDate(message.getEditDate()).text(message.getText()).build();
+            if (message.getAuthorUser()!=null) messageDto.setIdAuthorUser(message.getAuthorUser().getId());
+            messageTemplateDtos.add(messageDto);
+        }
+        return messageTemplateDtos;
     }
 }

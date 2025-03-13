@@ -41,6 +41,10 @@ import java.util.regex.Pattern;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
+    /**
+     * Мапа для хранение шаблонов сообщений
+     */
+    private final HashMap<String, String> messageTemplate;
     private static final long THIRTY_MINUTES_IN_MILLIS = 1800;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final BotProperties botProperties;
@@ -93,10 +97,6 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private final String questionEmail = "Register_Email";
     /**
-     * Вопрос о получении уведомлений
-     */
-    private final String questionNotification = "Вы хотели бы получать уведомления по этой посылке?";
-    /**
      * Утвердительный ответ
      */
     private final String answerYes = "Да";
@@ -104,11 +104,6 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Отрицательный ответ
      */
     private final String answerNo = "Нет";
-    /**
-     * Вопрос о роли пользователя в контексте отправления
-     */
-    private final String questionRole = "Для учета статистики, пожалуйста, укажите, " +
-            "являетесь вы отправителем или получателем этой посылки";
     /**
      * Ответ - роль отправителя
      */
@@ -128,6 +123,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
                        UserDataCommand userDataCommand) {
+        this.messageTemplate = new HashMap<>();
         this.startCommand = startCommand;
         this.botProperties = botProperties;
         this.messageTemplateCommand = messageTemplateCommand;
@@ -138,6 +134,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         this.viewUsersCommand = viewUsersCommand;
         this.viewAdminsCommand = viewAdminsCommand;
         this.viewBlockedUsersCommand = viewBlockedUsersCommand;
+        messageTemplateCommand.getTemplates(messageTemplate);
         start();
     }
 
@@ -158,7 +155,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (messageDto == null ||
                     System.currentTimeMillis() - messageDto.getDate().getTime() > THIRTY_MINUTES_IN_MILLIS) {
                 usersToRemove.add(id);
-                sendResponse(id.toString(), "Выход из режима администратора...");
+                sendResponse(id.toString(), getTemplate("exit"));
             }
         }
         authorizedAdmins.removeAll(usersToRemove);
@@ -269,9 +266,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     viewAdminsCommand.execute(longChatId);
                 }
                 else {
-                    // Логика ответа на другие сообщения
-                    String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
-                    sendResponse(chatId, botResponse);
+                    sendResponse(chatId, getTemplate("error_command"));
                 }
             } catch (Exception e) {
                 sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
@@ -308,15 +303,14 @@ public class TelegramBot extends TelegramLongPollingBot {
             // Создаем пользователя с номером телефона
             boolean newUser = startCommand.createUserWithPhone(userId, userName, userSurname, userUsername, phoneNumber, null, null);
             if (newUser) {
-                sendResponseAndDeleteKeyboard(chatId, "Спасибо за предоставление вашего номера телефона!");
+                sendResponseAndDeleteKeyboard(chatId, getTemplate("phone"));
                 sendResponse(chatId, helpCommand.getHelpMessage());
                 if (!startCommand.isAdministratorRegistered()) {
-                    sendResponse(chatId, "Администратор не найден. Для регистрации Вас как администратора, укажите " +
-                            "значение токена телеграм-бота");
+                    sendResponse(chatId, getTemplate("reg_admin"));
                     userQuestions.put(update.getMessage().getChatId(), questionToken);
                 }
             } else {
-                sendResponse(chatId, "Произошла ошибка, пожалуйста, попробуйте снова поделиться номером телефона");
+                sendResponse(chatId, getTemplate("error_phone"));
             }
         } catch (Exception e) {
             sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
@@ -367,7 +361,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 sendResponse(id.toString(), trackingCommand.getTrackingMessage(track));
             else sendResponse(id.toString(), trackingCommand.getHistoryMessage(track));
         } else {
-            sendResponse(id.toString(), "Пожалуйста, укажите номер отслеживания или существующее имя.");
+            sendResponse(id.toString(), getTemplate("error_track"));
         }
     }
 
@@ -382,9 +376,9 @@ public class TelegramBot extends TelegramLongPollingBot {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1) {
             packageCommand.deleteNameTrackNumber(id, userMessage.substring(spaceIndex + 1).toLowerCase());
-            sendResponse(id.toString(), "Имя удалено");
+            sendResponse(id.toString(), getTemplate("delete_name"));
         } else {
-            sendResponse(id.toString(), "Пожалуйста, укажите удаляемое имя.");
+            sendResponse(id.toString(), getTemplate("error_delete_name"));
         }
     }
 
@@ -404,26 +398,26 @@ public class TelegramBot extends TelegramLongPollingBot {
                     trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex)) != null) {
                 if (packageCommand.findByName(id,   //проверяем, добавлял ли пользователь уже такое имя посылке
                         trackName.substring(spaceIndex + 1).toLowerCase()) != null)
-                    sendResponse(id.toString(), "Такое имя посылки уже создано");
+                    sendResponse(id.toString(), getTemplate("name_exists"));
                 else {  //иначе проверяем, есть ли уже данные о посылке для этого пользователя
                     PackageDto packageDto = packageCommand.findByTrack(id,
                             trackName.substring(0, spaceIndex));
                     if (packageDto != null) {   //если данные есть - меняем полученный DTO-объект
                         packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
                         packageCommand.addNameTrackNumber(packageDto);
-                        sendResponse(id.toString(), "Имя сохранено.");
+                        sendResponse(id.toString(), getTemplate("save_name"));
 
                     } else {    //данных нет - создаем новый DTO-объект
                         packageDto = PackageDto.builder().idUser(id).
                                 namePackage(trackName.substring(spaceIndex + 1).toLowerCase())
                                 .trackNumber(trackName.substring(0, spaceIndex)).build();
                         userPackage.put(id, packageDto);
-                        sendQuestion(id, questionNotification, answerYes, answerNo);    //задаем вопрос об отслеживании
+                        sendQuestion(id, getTemplate("notification"), answerYes, answerNo);    //задаем вопрос об отслеживании
                     }
                 }
-            } else sendResponse(id.toString(), "Пожалуйста, укажите правильный трек-номер и имя для него.");
+            } else sendResponse(id.toString(), getTemplate("error_add_name"));
         } else {
-            sendResponse(id.toString(), "Пожалуйста, укажите трек-номер и имя.");
+            sendResponse(id.toString(), getTemplate("error_no_track"));
         }
     }
 
@@ -442,7 +436,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (userMessage.equals(answerNo)) packageDto.setNameTrackingStatus(AppConstants.NO_TRACKED);
             if (packageDto.getNameTrackingStatus() != null) {   //если ответ об отслеживании получен
                 userPackage.put(id, packageDto);
-                sendQuestion(id, questionRole, answerSender, answerRecipient);  //задаем вопрос о роли
+                sendQuestion(id, getTemplate("role"), answerSender, answerRecipient);  //задаем вопрос о роли
             }
         } else if (packageDto.getNameRole() == null && userMessage.equals(answerSender) ||
                 userMessage.equals(answerRecipient)) {  //если ожидаем ответ о роли - сохраняем значение роли
@@ -450,7 +444,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             trackingCommand.updateParcelDetails(packageDto);
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
-            sendResponseAndDeleteKeyboard(id.toString(), "Имя сохранено.");
+            sendResponseAndDeleteKeyboard(id.toString(), getTemplate("save_name"));
         }
     }
 
@@ -465,24 +459,24 @@ public class TelegramBot extends TelegramLongPollingBot {
         String idString = id.toString();
         if (userQuestions.get(id).equals(questionToken)) {  //если ожидается токен
             if (!userMessage.equals(getBotToken())) {    //и токен введен неверно
-                sendResponse(idString, "Токен введен неверно");
+                sendResponse(idString, getTemplate("error_token"));
                 userQuestions.remove(id);
             } else {   //если токен введен верно, бот просит ввести почту
-                sendResponse(idString, "Введите почту, на которую будет выслан пароль");
+                sendResponse(idString, getTemplate("input_email"));
                 userQuestions.remove(id);
                 userQuestions.put(id, questionEmail);
             }
         } else if (userQuestions.get(id).equals(questionEmail)) { //если бот ожидает ввод почты
             if (isValidEmail(userMessage)) {    //и почта введена по шаблону
-                sendResponse(idString, "Подождите...");
+                sendResponse(idString, getTemplate("wait"));
                 if (startCommand.updateAdminUser(id, userMessage)) {  //меняем данные о пользователе
-                    sendResponse(idString, "Пароль отправлен на почту");
+                    sendResponse(idString, getTemplate("send"));
                     userQuestions.remove(id);
                 }
                 else
-                    sendResponse(idString, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
+                    sendResponse(idString, getTemplate("error_user"));
             } else {
-                sendResponse(idString, "Неправильный формат электронной почты. Введите почту правильно");
+                sendResponse(idString, getTemplate("error_email"));
             }
         }
     }
@@ -502,16 +496,15 @@ public class TelegramBot extends TelegramLongPollingBot {
                 packageDto = packageCommand.findByTrack(id, track);   //если посылку не нашли - ищем по трек-номеру
             if (packageDto == null && trackingCommand.serviceDefinition(track) != null) {   //если посылка в бд не найдена, но в команде передан трек-номер
                 packageDto = PackageDto.builder().idUser(id).trackNumber(track).build();
-                sendQuestion(id, "Данные об отслеживании посылки не найдены. " +
-                        "Хотите получать уведомления о статусе посылки?", answerYes, answerNo);
+                sendQuestion(id, getTemplate("quest_notif"), answerYes, answerNo);
                 userPackageTrackingStatus.put(id, packageDto);
             } else if (packageDto == null && trackingCommand.serviceDefinition(track) == null) {   //если посылка не найдена, и передан не трек-номер
-                sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
+                sendResponse(id.toString(), getTemplate("error_track"));
             } else if (packageDto != null) { //если посылка найдена
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.DELIVERED)) //и уже доставлена
-                    sendResponse(id.toString(), "Посылка доставлена, поменять статус отслеживания нельзя.");
+                    sendResponse(id.toString(), getTemplate("delivered"));
                 else if (packageDto.getNameTrackingStatus().equals(AppConstants.CANCELED))
-                    sendResponse(id.toString(), "Посылка отменена, поменять статус отслеживания нельзя.");
+                    sendResponse(id.toString(), getTemplate("canceled"));
                 else {
                     sendQuestion(id, "Сейчас посылка " + packageDto.getNameTrackingStatus().toLowerCase() + "" +
                             ". Хотите поменять статус отслеживания на противоположный?", answerYes, answerNo);
@@ -519,7 +512,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
         } else {
-            sendResponse(id.toString(), "Пожалуйста, укажите трек-номер или существующее имя.");
+            sendResponse(id.toString(), getTemplate("error_track"));
         }
     }
 
@@ -546,12 +539,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                 packageDto.setNameTrackingStatus(AppConstants.TRACKED);
                 userPackageTrackingStatus.remove(id);
                 userPackage.put(id, packageDto);    //добавляем посылку в мапу для создания посылки
-                sendQuestion(id, questionRole, answerSender, answerRecipient);  //задаем вопрос о роли
+                sendQuestion(id, getTemplate("role"), answerSender, answerRecipient);  //задаем вопрос о роли
             }
         }
         if (userMessage.equals(answerNo)) {
             userPackageTrackingStatus.remove(id);
-            sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
+            sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
         }
     }
 
@@ -566,10 +559,10 @@ public class TelegramBot extends TelegramLongPollingBot {
             int spaceIndex = userMessage.indexOf(" ");
             if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))) { //если почта введена и соответствует шаблону
                 if (userDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
-                    sendResponse(id.toString(), "Адрес почты изменен.");
-                else sendResponse(id.toString(), "Не удалось изменить адрес почты.");
+                    sendResponse(id.toString(), getTemplate("change_email"));
+                else sendResponse(id.toString(), getTemplate("error_change_email"));
             } else {
-                sendResponse(id.toString(), "Неправильный формат электронной почты. Введите почту правильно");
+                sendResponse(id.toString(), getTemplate("error_email"));
             }
     }
 
@@ -579,9 +572,9 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @throws Exception не найден статус пользователя
      */
     private void processingChangePassword(Long id) throws Exception {
-        sendResponse(id.toString(), "Подождите...");
-        if (userDataCommand.updatePassword(id)) sendResponse(id.toString(), "Пароль отправлен на почту");
-        else sendResponse(id.toString(), "Не удалось изменить пароль.");
+        sendResponse(id.toString(), getTemplate("wait"));
+        if (userDataCommand.updatePassword(id)) sendResponse(id.toString(), getTemplate("send"));
+        else sendResponse(id.toString(), getTemplate("error_change_password"));
     }
 
     /**
@@ -590,9 +583,9 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void processingAuthorization(Long id){
         UserDto userDto = userDataCommand.getAdminDto(id);
-        if (userDto==null) sendResponse(id.toString(), "Вы не являетесь админом.");
+        if (userDto==null) sendResponse(id.toString(), getTemplate("error_auth"));
         else{
-            sendResponse(id.toString(), "Введите пароль.");
+            sendResponse(id.toString(), getTemplate("input_password"));
             adminAuthDTO.put(id, userDto);
         }
     }
@@ -607,12 +600,12 @@ public class TelegramBot extends TelegramLongPollingBot {
     private void passwordCheck(String userMessage, Long id, Integer messageId) throws TelegramApiException {
         UserDto userDto = adminAuthDTO.get(id);
         if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())){
-            sendResponse(id.toString(), "Вы успешно вошли в режим администратора.");
+            sendResponse(id.toString(), getTemplate("auth"));
             authorizedAdmins.add(id);
             adminAuthDTO.remove(id);
         }
         else {
-            sendResponse(id.toString(), "Неверный пароль.");
+            sendResponse(id.toString(), getTemplate("error_password"));
             adminAuthDTO.remove(id);
         }
         execute(new DeleteMessage(id.toString(), messageId));
@@ -623,10 +616,10 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param id id пользователя
      */
     private void processingExit(Long id){
-        if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), "Вы не находитесь в режиме администратора.");
+        if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), getTemplate("error_exit"));
         else{
             authorizedAdmins.remove(id);
-            sendResponse(id.toString(), "Вы вышли из режима администратора.");
+            sendResponse(id.toString(), getTemplate("exit"));
         }
     }
 
@@ -640,26 +633,24 @@ public class TelegramBot extends TelegramLongPollingBot {
         if (spaceIndex != -1 && trackingCommand.isOnlyNumbers(userMessage.substring(spaceIndex + 1))) {
             Long idUser = Long.parseLong(userMessage.substring(spaceIndex + 1));
             String status = userDataCommand.getStatusUser(idUser);
-            if (status == null) sendResponse(id.toString(), "Пользователь не найден.");
+            if (status == null) sendResponse(id.toString(), getTemplate("error_find_user"));
             else {
                 HashMap<Long, String> idUserStatus = new HashMap<>();
                 if (status.equals(AppConstants.STATUS_BLOCKED))
-                    sendResponse(id.toString(), "Пользователь заблокирован, для него нельзя изменить роль.");
+                    sendResponse(id.toString(), getTemplate("error_role_blocked"));
                 else if (status.equals(AppConstants.STATUS_ADMIN)) {
                     idUserStatus.put(idUser, status);
                     userUpdateStatus.put(id, idUserStatus);
-                    sendQuestion(id, "Данный пользователь является администратором. " +
-                            "Изменить его роль на обычного пользователя?", answerYes, answerNo);
+                    sendQuestion(id, getTemplate("role_admin"), answerYes, answerNo);
                 }
                 else if (status.equals(AppConstants.STATUS_USER)) {
                     idUserStatus.put(idUser, status);
                     userUpdateStatus.put(id, idUserStatus);
-                    sendQuestion(id, "Данный пользователь не является администратором. " +
-                            "Изменить его роль на администратора?", answerYes, answerNo);
+                    sendQuestion(id, getTemplate("role_user"), answerYes, answerNo);
                 }
             }
         }
-        else sendResponse(id.toString(), "Введите правильный id пользователя");
+        else sendResponse(id.toString(), getTemplate("error_id"));
     }
 
     /**
@@ -676,7 +667,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 messageTemplateDto=messageTemplateCommand.findById(Long.parseLong(identifierTemplate));
             else messageTemplateDto=messageTemplateCommand.findByEvent(identifierTemplate);
             if (messageTemplateDto==null){
-                sendResponse(id.toString(), "Такой шаблон не найден");
+                sendResponse(id.toString(), getTemplate("error_find_template"));
             }
             else {
                 updateTemplate.put(id, messageTemplateDto);
@@ -684,7 +675,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 +". Введите новый текст или отправьте \"Отмена\" для отмены изменений");
             }
         }
-        else sendResponse(id.toString(), "Введите id или событие шаблона");
+        else sendResponse(id.toString(), getTemplate("error_id_template"));
     }
 
     /**
@@ -695,7 +686,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     public void updateMessageTemplate(String userMessage, Long id) throws Exception {
         if (userMessage.equals("Отмена")){
-            sendResponse(id.toString(), "Отмена изменений");
+            sendResponse(id.toString(), getTemplate("cancel_change"));
         }
         else{
             MessageTemplateDto messageTemplateDto = updateTemplate.get(id);
@@ -703,7 +694,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             messageTemplateDto.setIdAuthorUser(id);
             messageTemplateDto.setEditDate(new Date());
             messageTemplateCommand.update(messageTemplateDto);
-            sendResponse(id.toString(), "Шаблон обновлен");
+            sendResponse(id.toString(), getTemplate("update_template"));
+            messageTemplate.put(messageTemplateDto.getEvent(), messageTemplateDto.getText());
         }
         updateTemplate.remove(id);
     }
@@ -721,14 +713,14 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)){
                     adminAuthDTO.remove(idUser);
                     if (userDataCommand.updateAdminToUser(id)) {
-                        sendResponseAndDeleteKeyboard(id.toString(), "Роль пользователя изменена");
-                        sendResponse(idUser.toString(), "Ваша роль была изменена с администратора на обычного пользователя");
+                        sendResponseAndDeleteKeyboard(id.toString(), getTemplate("update_role"));
+                        sendResponse(idUser.toString(), getTemplate("update_to_user"));
                     }
-                    else sendResponseAndDeleteKeyboard(id.toString(), "Произошла ошибка");
+                    else sendResponseAndDeleteKeyboard(id.toString(), getTemplate("error_find_user"));
                 }
                 else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)){
-                    sendResponseAndDeleteKeyboard(id.toString(), "Пользователю отправлен запрос на регистрацию");
-                    sendResponse(idUser.toString(), "Вас назначили администратором. Введите почту, на которую будет выслан пароль");
+                    sendResponseAndDeleteKeyboard(id.toString(), getTemplate("send_request"));
+                    sendResponse(idUser.toString(), getTemplate("update_to_admin"));
                     userQuestions.put(idUser, questionEmail);
                 }
             }
@@ -736,7 +728,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         else if (userMessage.equals(answerNo)){
             userUpdateStatus.remove(id);
-            sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
+            sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
         }
     }
     /**
@@ -795,7 +787,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("Выберите промежуток времени для отчета:");
+        message.setText(getTemplate("select_interval"));
         message.setReplyMarkup(keyboardMarkup);
 
         sendMessage(message);
@@ -834,5 +826,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    private String getTemplate(String event){
+        return messageTemplate.getOrDefault(event, "Сообщение не найдено.");
     }
 }
