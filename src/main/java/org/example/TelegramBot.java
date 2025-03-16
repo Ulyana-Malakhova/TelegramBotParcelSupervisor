@@ -143,7 +143,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void checkUserMessages() {
         Set<Long> usersToRemove = new HashSet<>();
-        for (Long id: authorizedAdmins){
+        for (Long id : authorizedAdmins) {
             MessageDto messageDto = messageService.getLatest(id);
             if (messageDto == null ||
                     System.currentTimeMillis() - messageDto.getDate().getTime() > THIRTY_MINUTES_IN_MILLIS) {
@@ -153,6 +153,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         authorizedAdmins.removeAll(usersToRemove);
     }
+
     @Override
     public String getBotUsername() {
         return botProperties.username;
@@ -206,24 +207,21 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingTrack(userMessage, id);
                 } else if (userMessage.equals("/saved_parcels")) {
                     sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
-                } else if(userMessage.equals("/change_password") && authorizedAdmins.contains(id)){
+                } else if (userMessage.equals("/change_password") && authorizedAdmins.contains(id)) {
                     processingChangePassword(id);
-                } else if (userMessage.equals("/auth")){
+                } else if (userMessage.equals("/auth")) {
                     processingAuthorization(id);
-                }
-                else if (userMessage.equals("/exit")){
+                } else if (userMessage.equals("/exit")) {
                     processingExit(id);
-                }
-                else if (userMessage.startsWith("/delete_name")) {
+                } else if (userMessage.startsWith("/delete_name")) {
                     processingDeleteName(userMessage, id);
                 } else if (userMessage.startsWith("/add_name")) {
                     processingAddName(userMessage, id);
-                } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)){
+                } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)) {
                     processingChangeEmail(userMessage, id);
-                } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
+                } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)) {
                     processingSetUserRole(userMessage, id);
-                }
-                else if (userMessage.startsWith("/traceability_track")) {
+                } else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
                 } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
                     processingQuestion(userMessage, id);
@@ -231,11 +229,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                     processingPackage(userMessage, id);
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
-                }
-                else if (adminAuthDTO.containsKey(id)){
+                } else if (adminAuthDTO.containsKey(id)) {
                     passwordCheck(userMessage, id, update.getMessage().getMessageId());
-                }
-                else if (userUpdateStatus.containsKey(id)){
+                } else if (userUpdateStatus.containsKey(id)) {
                     statusChange(userMessage, id);
                 }
                 // Обработка команды /report
@@ -243,21 +239,20 @@ public class TelegramBot extends TelegramLongPollingBot {
                     reportOption(longChatId);
                 }
                 // Обработка команды /view_users
-                else if (userMessage.equals("/view_users")){
+                else if (userMessage.equals("/view_users")) {
                     ByteArrayOutputStream excelFile = viewUsersCommand.execute();
                     sendDocument(longChatId, excelFile, "view_users.xlsx");
                 }
                 // Обработка команды /view_blocked_users
-                else if (userMessage.equals("/view_blocked_users")){
+                else if (userMessage.equals("/view_blocked_users")) {
                     ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
                     sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
                 }
                 // Обработка команды /view_admins
-                else if (userMessage.equals("/view_admins")){
+                else if (userMessage.equals("/view_admins")) {
                     ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
                     sendDocument(longChatId, excelFile, "view_admins.xlsx");
-                }
-                else {
+                } else {
                     // Логика ответа на другие сообщения
                     String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
                     sendResponse(chatId, botResponse);
@@ -467,8 +462,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (startCommand.updateAdminUser(id, userMessage)) {  //меняем данные о пользователе
                     sendResponse(idString, "Пароль отправлен на почту");
                     userQuestions.remove(id);
-                }
-                else
+                } else
                     sendResponse(idString, "Данные о вас не найдены в системе, пожалуйста, введите команду /start");
             } else {
                 sendResponse(idString, "Неправильный формат электронной почты. Введите почту правильно");
@@ -547,23 +541,25 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды изменения почты
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найден статус пользователя
      */
     private void processingChangeEmail(String userMessage, Long id) throws Exception {
-            int spaceIndex = userMessage.indexOf(" ");
-            if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))) { //если почта введена и соответствует шаблону
-                if (userDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
-                    sendResponse(id.toString(), "Адрес почты изменен.");
-                else sendResponse(id.toString(), "Не удалось изменить адрес почты.");
-            } else {
-                sendResponse(id.toString(), "Неправильный формат электронной почты. Введите почту правильно");
-            }
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))) { //если почта введена и соответствует шаблону
+            if (userDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
+                sendResponse(id.toString(), "Адрес почты изменен.");
+            else sendResponse(id.toString(), "Не удалось изменить адрес почты.");
+        } else {
+            sendResponse(id.toString(), "Неправильный формат электронной почты. Введите почту правильно");
+        }
     }
 
     /**
      * Обработка команды изменения почты
+     *
      * @param id id пользователя
      * @throws Exception не найден статус пользователя
      */
@@ -575,12 +571,13 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды авторизации
+     *
      * @param id id пользователя
      */
-    private void processingAuthorization(Long id){
+    private void processingAuthorization(Long id) {
         UserDto userDto = userDataCommand.getAdminDto(id);
-        if (userDto==null) sendResponse(id.toString(), "Вы не являетесь админом.");
-        else{
+        if (userDto == null) sendResponse(id.toString(), "Вы не являетесь админом.");
+        else {
             sendResponse(id.toString(), "Введите пароль.");
             adminAuthDTO.put(id, userDto);
         }
@@ -588,19 +585,19 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Проверка правильности введенного пароля
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
-     * @param messageId id сообщения с паролем
+     * @param id          id пользователя
+     * @param messageId   id сообщения с паролем
      * @throws TelegramApiException ошибка при попытке удалить сообщение с паролем
      */
     private void passwordCheck(String userMessage, Long id, Integer messageId) throws TelegramApiException {
         UserDto userDto = adminAuthDTO.get(id);
-        if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())){
+        if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())) {
             sendResponse(id.toString(), "Вы успешно вошли в режим администратора.");
             authorizedAdmins.add(id);
             adminAuthDTO.remove(id);
-        }
-        else {
+        } else {
             sendResponse(id.toString(), "Неверный пароль.");
             adminAuthDTO.remove(id);
         }
@@ -609,11 +606,12 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка выхода из режима администратора
+     *
      * @param id id пользователя
      */
-    private void processingExit(Long id){
+    private void processingExit(Long id) {
         if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), "Вы не находитесь в режиме администратора.");
-        else{
+        else {
             authorizedAdmins.remove(id);
             sendResponse(id.toString(), "Вы вышли из режима администратора.");
         }
@@ -621,10 +619,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка изменения роли другого пользователя
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      */
-    private void processingSetUserRole(String userMessage, Long id){
+    private void processingSetUserRole(String userMessage, Long id) {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1 && trackingCommand.isOnlyNumbers(userMessage.substring(spaceIndex + 1))) {
             Long idUser = Long.parseLong(userMessage.substring(spaceIndex + 1));
@@ -639,50 +638,47 @@ public class TelegramBot extends TelegramLongPollingBot {
                     userUpdateStatus.put(id, idUserStatus);
                     sendQuestion(id, "Данный пользователь является администратором. " +
                             "Изменить его роль на обычного пользователя?", answerYes, answerNo);
-                }
-                else if (status.equals(AppConstants.STATUS_USER)) {
+                } else if (status.equals(AppConstants.STATUS_USER)) {
                     idUserStatus.put(idUser, status);
                     userUpdateStatus.put(id, idUserStatus);
                     sendQuestion(id, "Данный пользователь не является администратором. " +
                             "Изменить его роль на администратора?", answerYes, answerNo);
                 }
             }
-        }
-        else sendResponse(id.toString(), "Введите правильный id пользователя");
+        } else sendResponse(id.toString(), "Введите правильный id пользователя");
     }
 
     /**
      * Изменение статуса пользователя в зависимости от полученного ответа
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найден статус или пользователь
      */
     private void statusChange(String userMessage, Long id) throws Exception {
-        if (userMessage.equals(answerYes)){
+        if (userMessage.equals(answerYes)) {
             Map<Long, String> idUserStatus = userUpdateStatus.get(id);
             userUpdateStatus.remove(id);
-            for (Long idUser: idUserStatus.keySet()){
-                if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)){
+            for (Long idUser : idUserStatus.keySet()) {
+                if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)) {
                     adminAuthDTO.remove(idUser);
                     if (userDataCommand.updateAdminToUser(id)) {
                         sendResponseAndDeleteKeyboard(id.toString(), "Роль пользователя изменена");
                         sendResponse(idUser.toString(), "Ваша роль была изменена с администратора на обычного пользователя");
-                    }
-                    else sendResponseAndDeleteKeyboard(id.toString(), "Произошла ошибка");
-                }
-                else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)){
+                    } else sendResponseAndDeleteKeyboard(id.toString(), "Произошла ошибка");
+                } else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)) {
                     sendResponseAndDeleteKeyboard(id.toString(), "Пользователю отправлен запрос на регистрацию");
                     sendResponse(idUser.toString(), "Вас назначили администратором. Введите почту, на которую будет выслан пароль");
                     userQuestions.put(idUser, questionEmail);
                 }
             }
 
-        }
-        else if (userMessage.equals(answerNo)){
+        } else if (userMessage.equals(answerNo)) {
             userUpdateStatus.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), "Отмена изменений.");
         }
     }
+
     /**
      * Отправка пользователю вопроса и добавление кнопок-ответов
      *
