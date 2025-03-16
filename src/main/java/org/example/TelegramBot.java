@@ -28,6 +28,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -169,7 +170,13 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long chatId = update.getCallbackQuery().getMessage().getChatId();
             if (callbackData.startsWith("report_period_")) {
                 String period = callbackData.split("_")[2];
-                reportCommand.execute(chatId, period);
+                ByteArrayOutputStream excelFile = null;
+                try {
+                    excelFile = reportCommand.execute(chatId, period);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                sendDocument(chatId, excelFile, "reportParcels.xlsx");
             }
         } else if (update.hasMessage() && update.getMessage().hasText()) {
             Long id = update.getMessage().getChatId();
@@ -237,15 +244,18 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
                 // Обработка команды /view_users
                 else if (userMessage.equals("/view_users")){
-                    viewUsersCommand.execute(longChatId);
+                    ByteArrayOutputStream excelFile = viewUsersCommand.execute();
+                    sendDocument(longChatId, excelFile, "view_users.xlsx");
                 }
                 // Обработка команды /view_blocked_users
                 else if (userMessage.equals("/view_blocked_users")){
-                    viewBlockedUsersCommand.execute(longChatId);
+                    ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
+                    sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
                 }
                 // Обработка команды /view_admins
                 else if (userMessage.equals("/view_admins")){
-                    viewAdminsCommand.execute(longChatId);
+                    ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
+                    sendDocument(longChatId, excelFile, "view_admins.xlsx");
                 }
                 else {
                     // Логика ответа на другие сообщения

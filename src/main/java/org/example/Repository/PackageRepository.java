@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +58,6 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
      * @param period дата с которой выбираем посылки
      * @return список сущностей посылки
      */
-    @Query("SELECT e FROM Package e WHERE e.departureDate >= :period")
-    List<Package> findByPeriod(@Param("period") Date period);
+    @Query("SELECT e FROM Package e WHERE e.departureDate >= :period AND e.userEntity.id = :userId")
+    List<Package> findByPeriodAndById(@Param("period") Date period, @Param("userId") Long userId);
 }
