@@ -25,7 +25,7 @@ public class ReportCommand {
         ByteArrayOutputStream excelFile;
         try {
             // Получаем данные за выбранный период
-            excelFile = packageService.exportPackageToExcel(period);
+            excelFile = packageService.exportPackageToExcel(period, chatId);
             // После получения Excel-файла, отправляем его пользователю
             telegramBot.sendDocument(chatId, excelFile, "reportParcels.xlsx");
         } catch (IOException e) {
