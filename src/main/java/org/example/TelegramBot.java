@@ -29,6 +29,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -142,7 +144,8 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Запуск выполнения функции с определенным интервалом
      */
     public void start() {
-        scheduler.scheduleAtFixedRate(this::checkUserMessages, 0, 5, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(this::checkUserMessages, 0, 3, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(this::monitorParcelStatus, 0, 2, TimeUnit.MINUTES);
     }
 
     /**
@@ -159,6 +162,29 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
         }
         authorizedAdmins.removeAll(usersToRemove);
+    }
+
+    /**
+     * Отправка уведомлений об изменении статуса посылки
+     */
+    private void monitorParcelStatus() {
+        try {
+            List<PackageDto> trackingPackageDtos = packageCommand.getByStatus(AppConstants.TRACKED);
+            for (PackageDto packageDto : trackingPackageDtos) {
+                String status = packageDto.getLatestStatus();
+                trackingCommand.updateParcelDetails(packageDto);
+                if (packageDto.getLatestStatus() != null && !packageDto.getLatestStatus().equals(status)) {
+                    String name;
+                    if (packageDto.getNamePackage() != null) name = packageDto.getNamePackage();
+                    else name = packageDto.getTrackNumber();
+                    String message = "Отправление " + name + ": " + packageDto.getLatestStatus();
+                    sendResponse(String.valueOf(packageDto.getIdUser()), message);
+                    packageCommand.changeStatus(packageDto);
+                }
+            }
+            }catch(Exception e){
+                System.out.println(e.getMessage());
+            }
     }
     @Override
     public String getBotUsername() {
@@ -441,7 +467,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else if (packageDto.getNameRole() == null && userMessage.equals(answerSender) ||
                 userMessage.equals(answerRecipient)) {  //если ожидаем ответ о роли - сохраняем значение роли
             packageDto.setNameRole(userMessage);
-            trackingCommand.updateParcelDetails(packageDto);
+            try {
+                trackingCommand.updateParcelDetails(packageDto);
+            }catch (IOException | ParseException e){
+                sendResponse(String.valueOf(id), "Данные о посылке не были найдены");
+            }
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("save_name"));
@@ -531,7 +561,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     packageDto.setNameTrackingStatus(AppConstants.NO_TRACKED);
                 else if (packageDto.getNameTrackingStatus().equals(AppConstants.NO_TRACKED))
                     packageDto.setNameTrackingStatus(AppConstants.TRACKED);
-                packageCommand.changeTrackingStatus(packageDto);
+                packageCommand.changeStatus(packageDto);
                 sendResponseAndDeleteKeyboard(id.toString(), "Изменения сохранены, посылка " + packageDto.getNameTrackingStatus().toLowerCase());
             }
         } else {   //если посылки в бд еще нет

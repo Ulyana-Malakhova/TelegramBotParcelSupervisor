@@ -45,6 +45,11 @@ public class Package {
     @Column(name = "\"Receipt_Date\"")
     private Date receiptDate;
     /**
+     * Последнее полученное значение статуса
+     */
+    @Column(name = "\"Latest_Status\"")
+    private String latestStatus;
+    /**
      * Сущность пользователя
      */
     @ManyToOne(fetch = FetchType.LAZY)

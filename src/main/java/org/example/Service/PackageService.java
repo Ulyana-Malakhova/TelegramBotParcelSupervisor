@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -120,22 +118,24 @@ public class PackageService {
     }
 
     /**
-     * Обновление статуса отслеживания
+     * Обновление статусов посылки
      *
      * @param packageDto dto-объект посылки
      * @throws Exception не найдена запись посылки или статуса
      */
-    public void updateTrackingStatus(PackageDto packageDto) throws Exception {
+    public void updateStatus(PackageDto packageDto) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByTrackNumberAndUserId(packageDto.getIdUser(),
                 packageDto.getTrackNumber());
-        TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
-        if (trackingStatus == null) throw new Exception("Статус не найден");
         if (packageOptional.isEmpty()) throw new Exception("Данные о посылке не найдены");
-        else {
-            Package packageEntity = packageOptional.get();
+        Package packageEntity = packageOptional.get();
+        if (!packageDto.getNameTrackingStatus().equals(packageEntity.getTrackingStatusEntity().getNameTrackingStatus())) {
+            TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
+            if (trackingStatus == null) throw new Exception("Статус не найден");
             packageEntity.setTrackingStatusEntity(trackingStatus);
-            packageRepository.save(packageEntity);
         }
+        if (packageDto.getLatestStatus()!=null) packageEntity.setLatestStatus(packageDto.getLatestStatus());
+        if (packageDto.getReceiptDate()!=null) packageEntity.setReceiptDate(packageDto.getReceiptDate());
+        packageRepository.save(packageEntity);
     }
 
     /**
@@ -247,5 +247,26 @@ public class PackageService {
         }
         Date startDate = calendar.getTime();
         return packageRepository.findByPeriod(startDate);
+    }
+
+    /**
+     * Получение списка посылок по статусу отслеживания
+     * @param status значение статуса
+     * @return список dto-объектов посылок
+     * @throws Exception не найден статус отслеживания
+     */
+    public List<PackageDto> getByTrackingStatus(String status) throws Exception {
+        List<PackageDto> packageDtos = new ArrayList<>();
+        TrackingStatus trackingStatus = trackingStatusService.findByName(status);
+        if (trackingStatus == null) throw new Exception("Статус не найден");
+        List<Package> packages = packageRepository.findByLatestStatus(trackingStatus);
+        for(Package p: packages){
+            PackageDto packageDto = modelMapper.map(p, PackageDto.class);
+            packageDto.setNameRole(p.getRoleEntity().getNameRole());
+            packageDto.setNameTrackingStatus(p.getTrackingStatusEntity().getNameTrackingStatus());
+            packageDto.setIdUser(p.getUserEntity().getId());
+            packageDtos.add(packageDto);
+        }
+        return packageDtos;
     }
 }

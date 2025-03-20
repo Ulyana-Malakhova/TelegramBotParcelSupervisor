@@ -2,6 +2,7 @@ package org.example.Repository;
 
 import jakarta.transaction.Transactional;
 import org.example.Entity.Package;
+import org.example.Entity.TrackingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -61,4 +62,12 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
      */
     @Query("SELECT e FROM Package e WHERE e.departureDate >= :period")
     List<Package> findByPeriod(@Param("period") Date period);
+
+    /**
+     *
+     * @param status
+     * @return
+     */
+    @Query("SELECT e FROM Package e WHERE e.trackingStatusEntity = :status")
+    List<Package> findByLatestStatus(@Param("status") TrackingStatus status);
 }

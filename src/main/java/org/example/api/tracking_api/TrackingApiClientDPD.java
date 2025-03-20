@@ -38,6 +38,12 @@ public class TrackingApiClientDPD extends TrackingApiClient {
                     packageDto.setNameTrackingStatus(AppConstants.CANCELED);
             }
         }
+        statusObject = statusesArray.getJSONObject(statusesArray.length()-1);
+        String latestStatus = "";
+        if (!statusObject.optString(fieldMessage).isEmpty()) latestStatus = statusObject.optString(fieldMessage);
+        if (!statusObject.optString(fieldLocation).isEmpty()) latestStatus = latestStatus+" "+statusObject.optString(fieldLocation);
+        if (packageDto.getLatestStatus()==null || !latestStatus.equals(packageDto.getLatestStatus())) packageDto.setLatestStatus(latestStatus);
+
     }
 
     public TrackingApiClientDPD(){

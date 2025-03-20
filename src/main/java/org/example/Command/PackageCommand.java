@@ -35,8 +35,8 @@ public class PackageCommand {
      * @param packageDto dto-объект посылки
      * @throws Exception не найдена запись посылки или статуса
      */
-    public void changeTrackingStatus(PackageDto packageDto) throws Exception {
-        packageService.updateTrackingStatus(packageDto);
+    public void changeStatus(PackageDto packageDto) throws Exception {
+        packageService.updateStatus(packageDto);
     }
 
     /**
@@ -84,5 +84,8 @@ public class PackageCommand {
      */
     public PackageDto findByTrack(Long userId, String track){
         return packageService.findByTrack(userId, track);
+    }
+    public List<PackageDto> getByStatus(String status) throws Exception {
+        return packageService.getByTrackingStatus(status);
     }
 }
