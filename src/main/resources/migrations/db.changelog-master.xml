@@ -1,0 +1,20 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    <include file="01.000.00/create-changeset-status-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-tracking-status-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-user-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-role-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-package-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-message-template-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-message-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-group-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-group-package-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-check-username-trigger.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/create-changeset-check-admin-trigger.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/insert-changeset-status-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/insert-changeset-tracking-status-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/insert-changeset-role-table.sql" relativeToChangelogFile="true"/>
+    <include file="01.000.00/insert-changeset-message-template-table.sql" relativeToChangelogFile="true"/>
+</databaseChangeLog>

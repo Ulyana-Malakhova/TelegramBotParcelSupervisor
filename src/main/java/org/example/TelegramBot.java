@@ -35,6 +35,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -145,29 +146,32 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     public void start() {
         scheduler.scheduleAtFixedRate(this::checkUserMessages, 0, 3, TimeUnit.MINUTES);
-        scheduler.scheduleAtFixedRate(this::monitorParcelStatus, 0, 2, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(this::monitorParcelStatus, 0, 1, TimeUnit.MINUTES);
     }
 
     /**
      * Выход из режима администратора для неактивных пользователей
      */
     private void checkUserMessages() {
-        Set<Long> usersToRemove = new HashSet<>();
-        for (Long id: authorizedAdmins){
-            MessageDto messageDto = messageService.getLatest(id);
-            if (messageDto == null ||
-                    System.currentTimeMillis() - messageDto.getDate().getTime() > THIRTY_MINUTES_IN_MILLIS) {
-                usersToRemove.add(id);
-                sendResponse(id.toString(), getTemplate("exit"));
+        CompletableFuture.runAsync(() -> {
+            Set<Long> usersToRemove = new HashSet<>();
+            for (Long id : authorizedAdmins) {
+                MessageDto messageDto = messageService.getLatest(id);
+                if (messageDto == null ||
+                        System.currentTimeMillis() - messageDto.getDate().getTime() > THIRTY_MINUTES_IN_MILLIS) {
+                    usersToRemove.add(id);
+                    sendResponse(id.toString(), getTemplate("exit"));
+                }
             }
-        }
-        authorizedAdmins.removeAll(usersToRemove);
+            authorizedAdmins.removeAll(usersToRemove);
+        });
     }
 
     /**
      * Отправка уведомлений об изменении статуса посылки
      */
     private void monitorParcelStatus() {
+        CompletableFuture.runAsync(() -> {
         try {
             List<PackageDto> trackingPackageDtos = packageCommand.getByStatus(AppConstants.TRACKED);
             for (PackageDto packageDto : trackingPackageDtos) {
@@ -185,6 +189,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             }catch(Exception e){
                 System.out.println(e.getMessage());
             }
+        });
     }
     @Override
     public String getBotUsername() {
