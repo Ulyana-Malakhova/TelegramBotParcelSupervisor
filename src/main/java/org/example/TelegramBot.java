@@ -560,6 +560,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void processingStatusChange(String userMessage, Long id) throws Exception {
         PackageDto packageDto = userPackageTrackingStatus.get(id);
+        userPackageTrackingStatus.remove(id);
         if (packageDto.getNameTrackingStatus() != null) {  //если посылка уже есть в бд
             if (userMessage.equals(answerYes)) { //и ответ утвердительный - меняем статус на противоположный
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.TRACKED))
@@ -572,13 +573,11 @@ public class TelegramBot extends TelegramLongPollingBot {
         } else {   //если посылки в бд еще нет
             if (userMessage.equals(answerYes)) { //и ответ утвердительный
                 packageDto.setNameTrackingStatus(AppConstants.TRACKED);
-                userPackageTrackingStatus.remove(id);
                 userPackage.put(id, packageDto);    //добавляем посылку в мапу для создания посылки
                 sendQuestion(id, getTemplate("role"), answerSender, answerRecipient);  //задаем вопрос о роли
             }
         }
         if (userMessage.equals(answerNo)) {
-            userPackageTrackingStatus.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
         }
     }

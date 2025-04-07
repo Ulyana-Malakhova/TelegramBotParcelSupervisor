@@ -14,7 +14,7 @@ VALUES
 	('Имя удалено.', CURRENT_DATE, 'delete_name'),
 	('Пожалуйста, укажите удаляемое имя.', CURRENT_DATE, 'error_delete_name'),
 	('Такое имя посылки уже создано.', CURRENT_DATE, 'name_exists'),
-	('Имя сохранено.', CURRENT_DATE, 'save_name'),
+	('Сохранено.', CURRENT_DATE, 'save'),
 	('Пожалуйста, укажите правильный трек-номер и имя для него.', CURRENT_DATE, 'error_add_name'),
 	('Пожалуйста, укажите трек-номер и имя.', CURRENT_DATE, 'error_no_track'),
 	('Токен введен неверно.', CURRENT_DATE, 'error_token'),
