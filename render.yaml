@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: parcel-supervisor-bot
-    env: java
-    buildCommand: mvn clean install
-    startCommand: java -jar out/artifacts/telegramBotParcelSupervisor_jar/telegramBotParcelSupervisor.jar
-    envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        value: 7073195789:AAGYAHgEncvlJ40xZBPWgiuQMXvizDgWdRs
