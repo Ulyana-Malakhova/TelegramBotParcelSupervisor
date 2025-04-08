@@ -12,7 +12,8 @@ import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
@@ -40,7 +41,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class TelegramBot extends TelegramLongPollingBot {
+public class TelegramBot extends TelegramWebhookBot {
     private static final long THIRTY_MINUTES_IN_MILLIS = 1800;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final BotProperties botProperties;
@@ -165,7 +166,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public void onUpdateReceived(Update update) {
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
+        SendMessage responseMessage = new SendMessage();
         if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             Long chatId = update.getCallbackQuery().getMessage().getChatId();
@@ -174,10 +176,13 @@ public class TelegramBot extends TelegramLongPollingBot {
                 ByteArrayOutputStream excelFile = null;
                 try {
                     excelFile = reportCommand.execute(chatId, period);
+                    sendDocument(chatId, excelFile, "reportParcels.xlsx");
+                    responseMessage.setChatId(String.valueOf(chatId));
+                    responseMessage.setText("Отчет собран");
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    responseMessage.setText("Произошла ошибка");
                 }
-                sendDocument(chatId, excelFile, "reportParcels.xlsx");
+                return responseMessage;
             }
         } else if (update.hasMessage() && update.getMessage().hasText()) {
             Long id = update.getMessage().getChatId();
@@ -193,76 +198,113 @@ public class TelegramBot extends TelegramLongPollingBot {
                 // Обработка команды /start
                 if (userMessage.equals("/start")) {
                     sendMessage(startCommand.execute(update));
+                    return startCommand.execute(update);
                 }
                 // Обработка команды /help
                 else if (userMessage.equals("/help")) {
                     sendResponse(chatId, helpCommand.getHelpMessage());
+                    return null;
                 }
                 // Обработка команды /about
                 else if (userMessage.equals("/about")) {
                     sendResponse(chatId, aboutCommand.getAboutMessage());
+                    return null;
                 }
                 //обработка команд /track и /history
                 else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
                     processingTrack(userMessage, id);
+                    return null;
                 } else if (userMessage.equals("/saved_parcels")) {
                     sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
+                    return null;
                 } else if (userMessage.equals("/change_password") && authorizedAdmins.contains(id)) {
                     processingChangePassword(id);
+                    return null;
                 } else if (userMessage.equals("/auth")) {
                     processingAuthorization(id);
+                    return null;
                 } else if (userMessage.equals("/exit")) {
                     processingExit(id);
+                    return null;
                 } else if (userMessage.startsWith("/delete_name")) {
                     processingDeleteName(userMessage, id);
+                    return null;
                 } else if (userMessage.startsWith("/add_name")) {
                     processingAddName(userMessage, id);
+                    return null;
                 } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)) {
                     processingChangeEmail(userMessage, id);
+                    return null;
                 } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)) {
                     processingSetUserRole(userMessage, id);
+                    return null;
                 } else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
+                    return null;
                 } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
                     processingQuestion(userMessage, id);
+                    return null;
                 } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
                     processingPackage(userMessage, id);
+                    return null;
                 } else if (userPackageTrackingStatus.containsKey(id)) {
                     processingStatusChange(userMessage, id);
+                    return null;
                 } else if (adminAuthDTO.containsKey(id)) {
                     passwordCheck(userMessage, id, update.getMessage().getMessageId());
+                    return null;
                 } else if (userUpdateStatus.containsKey(id)) {
                     statusChange(userMessage, id);
+                    return null;
                 }
                 // Обработка команды /report
                 else if (userMessage.equals("/report")) {
                     reportOption(longChatId);
+                    return null;
                 }
                 // Обработка команды /view_users
                 else if (userMessage.equals("/view_users")) {
                     ByteArrayOutputStream excelFile = viewUsersCommand.execute();
                     sendDocument(longChatId, excelFile, "view_users.xlsx");
+                    responseMessage.setChatId(chatId);
+                    responseMessage.setText("Отчет собран");
+                    return responseMessage;
                 }
                 // Обработка команды /view_blocked_users
                 else if (userMessage.equals("/view_blocked_users")) {
                     ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
                     sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
+                    responseMessage.setChatId(chatId);
+                    responseMessage.setText("Отчет собран");
+                    return responseMessage;
                 }
                 // Обработка команды /view_admins
                 else if (userMessage.equals("/view_admins")) {
                     ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
                     sendDocument(longChatId, excelFile, "view_admins.xlsx");
+                    responseMessage.setChatId(chatId);
+                    responseMessage.setText("Отчет собран");
+                    return responseMessage;
                 } else {
                     // Логика ответа на другие сообщения
-                    String botResponse = "Вы ввели неверную команду, начните сообщение с символа '/'";
-                    sendResponse(chatId, botResponse);
+                    responseMessage.setChatId(chatId);
+                    responseMessage.setText("Вы ввели неверную команду, начните сообщение с символа '/'");
+                    return responseMessage;
                 }
             } catch (Exception e) {
-                sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
+                responseMessage.setChatId(chatId);
+                responseMessage.setText("Произошла ошибка: " + e.getMessage());
+                return responseMessage;
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
         }
+        return responseMessage;
+    }
+
+    @Override
+    public String getBotPath() {
+        return "/WEBHOOK_PATH";
     }
 
     /**
