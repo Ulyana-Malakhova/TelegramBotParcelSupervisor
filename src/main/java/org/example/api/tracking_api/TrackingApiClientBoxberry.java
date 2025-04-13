@@ -30,9 +30,12 @@ public class TrackingApiClientBoxberry extends TrackingApiClient {
             packageDto.setDepartureDate(format.parse(statusObject.optString(fieldDate)));
         String status = jsonResponse.getJSONArray("parcel_with_statuses").getJSONObject(0)
                 .optString("status_code");  //получаем текущий код статуса посылки
-        if (!status.isEmpty() && (Integer.parseInt(status)==190 || Integer.parseInt(status)==150)
-                && packageDto.getReceiptDate()==null) { //дату получения берем из последнего статуса
-            statusObject = statusesArray.getJSONObject(statusesArray.length()-1);
+        statusObject = statusesArray.getJSONObject(statusesArray.length()-1);
+        String latestStatus = "";
+        if (!statusObject.optString(fieldMessage).isEmpty()) latestStatus = statusObject.optString(fieldMessage);
+        if (!statusObject.optString(fieldLocation).isEmpty()) latestStatus = latestStatus+" "+statusObject.optString(fieldLocation);
+        if (packageDto.getLatestStatus()==null || !latestStatus.equals(packageDto.getLatestStatus())) packageDto.setLatestStatus(latestStatus);
+        if (!status.isEmpty() && (Integer.parseInt(status)==190 || Integer.parseInt(status)==150) && packageDto.getReceiptDate()==null) {
             if (!statusObject.optString(fieldDate).isEmpty())
                 packageDto.setReceiptDate(format.parse(statusObject.optString(fieldDate)));
             if (Integer.parseInt(status)==190) packageDto.setNameTrackingStatus(AppConstants.CANCELED);

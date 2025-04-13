@@ -1,10 +1,13 @@
 spring:
   jpa:
     hibernate:
+      ddl-auto: none
       naming:
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   config:
     import: "application-secret.yaml"
+  liquibase:
+    change-log: classpath:migrations/db.changelog-master.xml
 server:
   port: 8000

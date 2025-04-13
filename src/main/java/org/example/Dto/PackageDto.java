@@ -46,4 +46,8 @@ public class PackageDto {
      * Название статуса отслеживания (отслеживается, не отслеживается)
      */
     private String nameTrackingStatus;
+    /**
+     * Последнее полученное значение статуса
+     */
+    private String latestStatus;
 }
