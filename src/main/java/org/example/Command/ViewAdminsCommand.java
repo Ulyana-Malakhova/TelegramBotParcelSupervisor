@@ -1,5 +1,8 @@
 package org.example.Command;
 
+import org.example.AppConstants;
+import org.example.Dto.UserDto;
+import org.example.Entity.User;
 import org.example.Service.UserServiceImpl;
 import org.example.TelegramBot;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class ViewAdminsCommand {
@@ -20,7 +24,9 @@ public class ViewAdminsCommand {
         this.userService = userService;
         this.telegramBot = telegramBot;
     }
-
+    public List<UserDto> getAdmins() throws Exception {
+        return userService.findByStatus(AppConstants.STATUS_ADMIN);
+    }
     public void execute(long chatId) {
         ByteArrayOutputStream excelFile;
         try {

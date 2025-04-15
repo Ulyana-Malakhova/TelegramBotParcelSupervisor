@@ -67,6 +67,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * Множество id пользователей, находящихся в режиме администратора
      */
     private final Set<Long> authorizedAdmins = new HashSet<>();
+    private final Set<Long> adminSendMassMessage = new HashSet<>();
     /**
      * Мапа для хранения id чата и вопросов, ожидающих ответ
      */
@@ -264,7 +265,12 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
                 else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
-                } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
+                } else if (userMessage.equals("/send_mass_message") && authorizedAdmins.contains(id)){
+                    processingSendMassMessage(id);
+                } else if (adminSendMassMessage.contains(id)){
+                    sendMassMessage(userMessage, id);
+                }
+                else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
                     processingQuestion(userMessage, id);
                 } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
                     processingPackage(userMessage, id);
@@ -763,6 +769,24 @@ public class TelegramBot extends TelegramLongPollingBot {
         else if (userMessage.equals(answerNo)){
             userUpdateStatus.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
+        }
+    }
+    private void processingSendMassMessage(Long id){
+        adminSendMassMessage.add(id);
+        sendResponse(String.valueOf(id), "Введите сообщение, которое хотите отправить, или напишите \"Отмена\", " +
+                "для возврата из команды.");
+    }
+    private void sendMassMessage(String userMessage, Long id) throws Exception {
+        if (userMessage.equals("Отмена")){
+            adminSendMassMessage.remove(id);
+            sendResponse(String.valueOf(id), "Отмена выполнена");
+        }
+        else{
+            adminSendMassMessage.remove(id);
+            List<UserDto> users = viewUsersCommand.getUsers();
+            for (UserDto user: users) sendResponse(user.getId().toString(), userMessage);
+            List<UserDto> admins = viewAdminsCommand.getAdmins();
+            for (UserDto user: admins) if (!user.getId().equals(id)) sendResponse(user.getId().toString(), userMessage);
         }
     }
     /**

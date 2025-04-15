@@ -32,8 +32,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
-    private List<UserDto> toDto() {
-        List<User> users = userRepository.findAll();
+    private List<UserDto> toDto(List<User> users) {
         List<UserDto> userDtos = new ArrayList<>();
         for (User user : users) {
             userDtos.add(new UserDto(user.getId(), user.getName(), user.getSurname(), user.getUsername(), user.getPhoneNumber(), user.getStatus().getStatusName(), user.getEmail(), user.getPassword()));
@@ -106,6 +105,11 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         Optional<User> user = userRepository.findById(id);
         return user.orElse(null);
     }
+    public List<UserDto> findByStatus(String statusString) throws Exception {
+        Status status = getStatus(statusString);
+        List<User> users = userRepository.findByStatus(status);
+        return toDto(users);
+    }
 
     /**
      * Создание и заполнение эксель файла с активными пользователями
@@ -114,8 +118,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportActiveUsersToExcel() throws Exception {
-        Status status = getStatus(AppConstants.STATUS_USER);
-        List<User> users = userRepository.findByStatus(status);
+        List<UserDto> users = findByStatus(AppConstants.STATUS_USER);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("ActiveUser");
@@ -127,12 +130,12 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         headerRow.createCell(3).setCellValue("username");
 
         int rowNum = 1;
-        for (User userEntity : users) {
+        for (UserDto userDto : users) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
-            row.createCell(1).setCellValue(userEntity.getName());
-            row.createCell(2).setCellValue(userEntity.getSurname());
-            row.createCell(3).setCellValue(userEntity.getUsername());
+            row.createCell(0).setCellValue(userDto.getId());
+            row.createCell(1).setCellValue(userDto.getName());
+            row.createCell(2).setCellValue(userDto.getSurname());
+            row.createCell(3).setCellValue(userDto.getUsername());
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -149,8 +152,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportBlockedUsersToExcel() throws Exception {
-        Status status = getStatus(AppConstants.STATUS_BLOCKED);
-        List<User> blockedUsers = userRepository.findByStatus(status);
+        List<UserDto> blockedUsers = findByStatus(AppConstants.STATUS_BLOCKED);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("BlockedUser");
@@ -162,12 +164,12 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         headerRow.createCell(3).setCellValue("username");
 
         int rowNum = 1;
-        for (User userEntity : blockedUsers) {
+        for (UserDto userDto : blockedUsers) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
-            row.createCell(1).setCellValue(userEntity.getName());
-            row.createCell(2).setCellValue(userEntity.getSurname());
-            row.createCell(3).setCellValue(userEntity.getUsername());
+            row.createCell(0).setCellValue(userDto.getId());
+            row.createCell(1).setCellValue(userDto.getName());
+            row.createCell(2).setCellValue(userDto.getSurname());
+            row.createCell(3).setCellValue(userDto.getUsername());
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -184,8 +186,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
      * @throws Exception при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
     public ByteArrayOutputStream exportAdminsToExcel() throws Exception {
-        Status status = getStatus(AppConstants.STATUS_ADMIN);
-        List<User> admins = userRepository.findByStatus(status);
+        List<UserDto> admins = findByStatus(AppConstants.STATUS_ADMIN);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Administrators");
@@ -197,12 +198,12 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         headerRow.createCell(3).setCellValue("username");
 
         int rowNum = 1;
-        for (User userEntity : admins) {
+        for (UserDto userDto : admins) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
-            row.createCell(1).setCellValue(userEntity.getName());
-            row.createCell(2).setCellValue(userEntity.getSurname());
-            row.createCell(3).setCellValue(userEntity.getUsername());
+            row.createCell(0).setCellValue(userDto.getId());
+            row.createCell(1).setCellValue(userDto.getName());
+            row.createCell(2).setCellValue(userDto.getSurname());
+            row.createCell(3).setCellValue(userDto.getUsername());
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
