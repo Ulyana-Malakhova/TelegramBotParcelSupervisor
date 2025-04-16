@@ -1,6 +1,7 @@
 package org.example.Service;
 
 import org.example.Dto.MessageDto;
+import org.example.Dto.UserDto;
 import org.example.Entity.Message;
 import org.example.Entity.User;
 import org.example.Repository.MessageRepository;
@@ -9,6 +10,10 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -43,6 +48,19 @@ public class MessageServiceImpl implements ServiceInterface<MessageDto> {
             messageDto = new MessageDto(message.get().getId(), message.get().getText(), message.get().getDate(), message.get().getUser().getId());
         }
         return messageDto;
+    }
+    private List<MessageDto> toDto(List<Message> messages) {
+        List<MessageDto> messageDtos = new ArrayList<>();
+        for (Message message : messages) {
+            messageDtos.add(new MessageDto(message.getId(), message.getText(), message.getDate(), message.getUser().getId()));
+        }
+        return messageDtos;
+    }
+    public List<MessageDto> getMessageWithTrackingNumbers(Long userId){
+        LocalDate twoMonthsAgo = LocalDate.now().minusMonths(2);
+        Date dateToCompare = java.sql.Date.valueOf(twoMonthsAgo);
+        List<Message> messages = messageRepository.findLatestMessagesWithTrackingNumbers(userId, dateToCompare);
+        return toDto(messages);
     }
     public MessageDto getLatest(Long userId){
         Optional<Message> messageOptional = messageRepository.findLatestMessageByUserId(userId);

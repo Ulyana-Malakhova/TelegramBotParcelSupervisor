@@ -9,6 +9,7 @@ import org.example.Command.*;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
+import org.example.Entity.Message;
 import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -265,7 +266,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
                 else if (userMessage.startsWith("/traceability_track")) {
                     processingTraceability(userMessage, id);
-                } else if (userMessage.equals("/send_mass_message") && authorizedAdmins.contains(id)){
+                } else if (userMessage.equals("/recent_tracks")){
+                    processingRecentTracks(id);
+                }
+                else if (userMessage.equals("/send_mass_message") && authorizedAdmins.contains(id)){
                     processingSendMassMessage(id);
                 } else if (adminSendMassMessage.contains(id)){
                     sendMassMessage(userMessage, id);
@@ -442,7 +446,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                     if (packageDto != null) {   //если данные есть - меняем полученный DTO-объект
                         packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
                         packageCommand.addNameTrackNumber(packageDto);
-                        sendResponse(id.toString(), getTemplate("save_name"));
+                        sendResponse(id.toString(), getTemplate("save"));
 
                     } else {    //данных нет - создаем новый DTO-объект
                         packageDto = PackageDto.builder().idUser(id).
@@ -485,7 +489,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
-            sendResponseAndDeleteKeyboard(id.toString(), getTemplate("save_name"));
+            sendResponseAndDeleteKeyboard(id.toString(), getTemplate("save"));
         }
     }
 
@@ -784,9 +788,29 @@ public class TelegramBot extends TelegramLongPollingBot {
         else{
             adminSendMassMessage.remove(id);
             List<UserDto> users = viewUsersCommand.getUsers();
-            for (UserDto user: users) sendResponse(user.getId().toString(), userMessage);
+            for (UserDto user: users) {
+                sendResponse(user.getId().toString(), userMessage);
+            }
             List<UserDto> admins = viewAdminsCommand.getAdmins();
-            for (UserDto user: admins) if (!user.getId().equals(id)) sendResponse(user.getId().toString(), userMessage);
+            for (UserDto user: admins) if (!user.getId().equals(id)) {
+                sendResponse(user.getId().toString(), userMessage);
+            }
+            sendResponse(id.toString(), "Отправка выполнена успешно");
+        }
+    }
+    private void processingRecentTracks(Long id){
+        LinkedHashSet<String> trackNumbers = new LinkedHashSet<>();
+        List<MessageDto> messages = messageService.getMessageWithTrackingNumbers(id);
+        for (MessageDto messageDto: messages){
+            String[] words = messageDto.getText().split(" ");
+            if (trackingCommand.serviceDefinition(words[1])!=null) trackNumbers.add(words[1]);
+            if (trackNumbers.size()==5) break;
+        }
+        if (trackNumbers.isEmpty()) sendResponse(String.valueOf(id), "В сообщениях не найдены трек-номера");
+        else {
+            String answer = "Недавние трек-номера: \n";
+            for (String number: trackNumbers) answer = answer + number+"\n";
+            sendResponse(String.valueOf(id), answer);
         }
     }
     /**
