@@ -9,8 +9,11 @@ import org.example.Command.*;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
+import org.example.Entity.User;
 import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
+import org.example.Service.StatusServiceImpl;
+import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -62,7 +65,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final ViewUsersCommand viewUsersCommand;
     private final ViewAdminsCommand viewAdminsCommand;
     private final ViewBlockedUsersCommand viewBlockedUsersCommand;
+    private final UserServiceImpl userService;
+    private final StatusServiceImpl statusService;
     private final UserDataCommand userDataCommand;
+    private final BlockUserCommand blockUserCommand;
+    private final UnblockUserCommand unblockUserCommand;
     /**
      * Множество id пользователей, находящихся в режиме администратора
      */
@@ -125,7 +132,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                        MessageServiceImpl messageService, PackageCommand packageCommand,
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
-                       UserDataCommand userDataCommand) {
+                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand) {
+        this.userService = userService;
+        this.statusService = statusService;
+        this.blockUserCommand = blockUserCommand;
+        this.unblockUserCommand = unblockUserCommand;
         this.messageTemplate = new HashMap<>();
         this.startCommand = startCommand;
         this.botProperties = botProperties;
@@ -219,88 +230,94 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
             MessageDto messageDto = new MessageDto(RandomUtils.nextLong(0L, 9999L), userMessage, dateUserMessage, userId);
-            try {
-                messageService.save(messageDto);
-                // Обработка команды /start
-                if (userMessage.equals("/start")) {
-                    sendMessage(startCommand.execute(update));
+            User user = userService.findById(id);
+            if (user==null || !user.getStatus().getStatusName().equals(AppConstants.STATUS_BLOCKED)) {
+                try {
+                    messageService.save(messageDto);
+                    // Обработка команды /start
+                    if (userMessage.equals("/start")) {
+                        sendMessage(startCommand.execute(update));
+                    }
+                    // Обработка команды /help
+                    else if (userMessage.equals("/help")) {
+                        sendResponse(chatId, helpCommand.getHelpMessage());
+                    }
+                    // Обработка команды /about
+                    else if (userMessage.equals("/about")) {
+                        sendResponse(chatId, aboutCommand.getAboutMessage());
+                    }
+                    //обработка команд /track и /history
+                    else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
+                        processingTrack(userMessage, id);
+                    } else if (userMessage.equals("/saved_parcels")) {
+                        sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
+                    } else if (userMessage.equals("/change_password") && authorizedAdmins.contains(id)) {
+                        processingChangePassword(id);
+                    } else if (userMessage.equals("/auth")) {
+                        processingAuthorization(id);
+                    } else if (userMessage.equals("/exit")) {
+                        processingExit(id);
+                    } else if (userMessage.startsWith("/delete_name")) {
+                        processingDeleteName(userMessage, id);
+                    } else if (userMessage.startsWith("/add_name")) {
+                        processingAddName(userMessage, id);
+                    } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)) {
+                        processingChangeEmail(userMessage, id);
+                    } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)) {
+                        processingSetUserRole(userMessage, id);
+                    } else if (userMessage.equals("/view_templates") && authorizedAdmins.contains(id)) {
+                        ByteArrayOutputStream stream = messageTemplateCommand.sendTemplates();
+                        sendDocument(id, stream, "view_templates.xlsx");
+                    } else if (userMessage.startsWith("/set_template") && authorizedAdmins.contains(id)) {
+                        processingSetTemplate(userMessage, id);
+                    } else if (userMessage.startsWith("/traceability_track")) {
+                        processingTraceability(userMessage, id);
+                    } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
+                        processingQuestion(userMessage, id);
+                    } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
+                        processingPackage(userMessage, id);
+                    } else if (userPackageTrackingStatus.containsKey(id)) {
+                        processingStatusChange(userMessage, id);
+                    } else if (adminAuthDTO.containsKey(id)) {
+                        passwordCheck(userMessage, id, update.getMessage().getMessageId());
+                    } else if (userUpdateStatus.containsKey(id)) {
+                        statusChange(userMessage, id);
+                    } else if (updateTemplate.containsKey(id)) {
+                        updateMessageTemplate(userMessage, id);
+                    }
+                    // Обработка команды /report
+                    else if (userMessage.equals("/report")) {
+                        reportOption(longChatId);
+                    }
+                    // Обработка команды /view_users
+                    else if (userMessage.equals("/view_users")) {
+                        viewUsersCommand.execute(longChatId);
+                    }
+                    // Обработка команды /view_blocked_users
+                    else if (userMessage.equals("/view_blocked_users")) {
+                        viewBlockedUsersCommand.execute(longChatId);
+                    }
+                    // Обработка команды /view_admins
+                    else if (userMessage.equals("/view_admins")) {
+                        viewAdminsCommand.execute(longChatId);
+                    }
+                    //обработка команды block_user
+                    else if (userMessage.startsWith("/block_user") && authorizedAdmins.contains(id)) {
+                        processingBlockUserId(userMessage, id);
+                    }
+                    //обработка команды unblock_user
+                    else if (userMessage.startsWith("/unblock_user") && authorizedAdmins.contains(id)) {
+                        processingUnblockUserId(userMessage, id);
+                    }
+                    else {
+                        sendResponse(chatId, getTemplate("error_command"));
+                    }
+                } catch (Exception e) {
+                    sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
                 }
-                // Обработка команды /help
-                else if (userMessage.equals("/help")) {
-                    sendResponse(chatId, helpCommand.getHelpMessage());
-                }
-                // Обработка команды /about
-                else if (userMessage.equals("/about")) {
-                    sendResponse(chatId, aboutCommand.getAboutMessage());
-                }
-                //обработка команд /track и /history
-                else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
-                    processingTrack(userMessage, id);
-                } else if (userMessage.equals("/saved_parcels")) {
-                    sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
-                } else if(userMessage.equals("/change_password") && authorizedAdmins.contains(id)){
-                    processingChangePassword(id);
-                } else if (userMessage.equals("/auth")){
-                    processingAuthorization(id);
-                }
-                else if (userMessage.equals("/exit")){
-                    processingExit(id);
-                }
-                else if (userMessage.startsWith("/delete_name")) {
-                    processingDeleteName(userMessage, id);
-                } else if (userMessage.startsWith("/add_name")) {
-                    processingAddName(userMessage, id);
-                } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)){
-                    processingChangeEmail(userMessage, id);
-                } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
-                    processingSetUserRole(userMessage, id);
-                }
-                else if (userMessage.equals("/view_templates") && authorizedAdmins.contains(id)){
-                    ByteArrayOutputStream stream = messageTemplateCommand.sendTemplates();
-                    sendDocument(id, stream, "view_templates.xlsx");
-                }
-                else if (userMessage.startsWith("/set_template") && authorizedAdmins.contains(id)){
-                    processingSetTemplate(userMessage, id);
-                }
-                else if (userMessage.startsWith("/traceability_track")) {
-                    processingTraceability(userMessage, id);
-                } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
-                    processingQuestion(userMessage, id);
-                } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
-                    processingPackage(userMessage, id);
-                } else if (userPackageTrackingStatus.containsKey(id)) {
-                    processingStatusChange(userMessage, id);
-                }
-                else if (adminAuthDTO.containsKey(id)){
-                    passwordCheck(userMessage, id, update.getMessage().getMessageId());
-                }
-                else if (userUpdateStatus.containsKey(id)){
-                    statusChange(userMessage, id);
-                }
-                else if (updateTemplate.containsKey(id)){
-                    updateMessageTemplate(userMessage, id);
-                }
-                // Обработка команды /report
-                else if (userMessage.equals("/report")) {
-                    reportOption(longChatId);
-                }
-                // Обработка команды /view_users
-                else if (userMessage.equals("/view_users")){
-                    viewUsersCommand.execute(longChatId);
-                }
-                // Обработка команды /view_blocked_users
-                else if (userMessage.equals("/view_blocked_users")){
-                    viewBlockedUsersCommand.execute(longChatId);
-                }
-                // Обработка команды /view_admins
-                else if (userMessage.equals("/view_admins")){
-                    viewAdminsCommand.execute(longChatId);
-                }
-                else {
-                    sendResponse(chatId, getTemplate("error_command"));
-                }
-            } catch (Exception e) {
-                sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
+            }
+            else {
+                sendResponse(chatId, "Вы заблокированы в данном боте");
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
@@ -863,5 +880,37 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
     private String getTemplate(String event){
         return messageTemplate.getOrDefault(event, "Сообщение не найдено.");
+    }
+
+    /**
+     * Обработка команды /block_user
+     *
+     * @param userMessage полученное сообщение
+     * @param id          id администратора
+     */
+    private void processingBlockUserId(String userMessage, Long id) {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            Long userId = Long.valueOf(userMessage.substring(spaceIndex + 1));
+            sendResponse(id.toString(), blockUserCommand.blockUser(userId));
+        } else {
+            sendResponse(id.toString(), getTemplate("error_id"));
+        }
+    }
+
+    /**
+     * Обработка команды /unblock_user
+     *
+     * @param userMessage полученное сообщение
+     * @param id          id администратора
+     */
+    private void processingUnblockUserId(String userMessage, Long id) {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            Long userId = Long.valueOf(userMessage.substring(spaceIndex + 1));
+            sendResponse(id.toString(), unblockUserCommand.unblockUser(userId));
+        } else {
+            sendResponse(id.toString(), getTemplate("error_id"));
+        }
     }
 }

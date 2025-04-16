@@ -45,7 +45,7 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
     public void save(UserDto userDto) throws Exception {
         User userEntity = modelMapper.map(userDto, User.class);
         Status status = getStatus(userDto.getNameStatus());
-        if (status!=null) {
+        if (status != null) {
             userEntity.setStatus(status);
             userRepository.save(userEntity);
         }
@@ -210,5 +210,12 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         workbook.close();
 
         return outputStream;
+    }
+
+    public void updateStatusById(Status status, Long id) {
+        Optional<User> user = userRepository.findById(id);
+        User userEntity = user.get();
+        userEntity.setStatus(status);
+        userRepository.save(userEntity);
     }
 }
