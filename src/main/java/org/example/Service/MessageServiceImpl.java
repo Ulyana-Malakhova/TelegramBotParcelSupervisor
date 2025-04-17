@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class MessageServiceImpl implements ServiceInterface<MessageDto> {
+public class MessageServiceImpl implements ServiceInterface<MessageDto, Message> {
     private final ModelMapper modelMapper;
     private final MessageRepository messageRepository;
     private final UserServiceImpl userService;
@@ -49,19 +49,38 @@ public class MessageServiceImpl implements ServiceInterface<MessageDto> {
         }
         return messageDto;
     }
-    private List<MessageDto> toDto(List<Message> messages) {
+
+    /**
+     * Получение dto-списка сообщений
+     * @param messages список сущностей-сообщений
+     * @return dto-список сообщений
+     */
+    @Override
+    public List<MessageDto> toDto(List<Message> messages) {
         List<MessageDto> messageDtos = new ArrayList<>();
         for (Message message : messages) {
             messageDtos.add(new MessageDto(message.getId(), message.getText(), message.getDate(), message.getUser().getId()));
         }
         return messageDtos;
     }
+
+    /**
+     * Получение сообщений, в которых есть команды, связанные с трекингом
+     * @param userId id пользователя
+     * @return dto-список сообщений
+     */
     public List<MessageDto> getMessageWithTrackingNumbers(Long userId){
         LocalDate twoMonthsAgo = LocalDate.now().minusMonths(2);
         Date dateToCompare = java.sql.Date.valueOf(twoMonthsAgo);
         List<Message> messages = messageRepository.findLatestMessagesWithTrackingNumbers(userId, dateToCompare);
         return toDto(messages);
     }
+
+    /**
+     * Получение последннего сообщения пользователя
+     * @param userId id пользователя
+     * @return dto-объект сообщения
+     */
     public MessageDto getLatest(Long userId){
         Optional<Message> messageOptional = messageRepository.findLatestMessageByUserId(userId);
         if (messageOptional.isPresent()) {

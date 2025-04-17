@@ -317,6 +317,12 @@ public class TelegramBot extends TelegramLongPollingBot {
             handleContactUpdate(update);
         }
     }
+
+    /**
+     * Удаление ожидания ответа на вопорос при получении новой команды
+     * @param userMessage текущее полученное сообщение
+     * @param id id пользователя
+     */
     public void deleteWithoutResponse(String userMessage, Long id){
         if (!userMessage.equals("/send_mass_message")) adminSendMassMessage.remove(id);
         if (!userMessage.equals("/auth")) adminAuthDTO.remove(id);
@@ -788,11 +794,23 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
         }
     }
+
+    /**
+     * Обработка команды /set_mass_message
+     * @param id id пользователя
+     */
     private void processingSendMassMessage(Long id){
         adminSendMassMessage.add(id);
         sendResponse(String.valueOf(id), "Введите сообщение, которое хотите отправить, или напишите \"Отмена\", " +
                 "для возврата из команды.");
     }
+
+    /**
+     * Отправка сообщения всем пользователям
+     * @param userMessage текст сообщения
+     * @param id id пользователя
+     * @throws Exception не найден статус user или admin
+     */
     private void sendMassMessage(String userMessage, Long id) throws Exception {
         if (userMessage.equals("Отмена")){
             adminSendMassMessage.remove(id);
@@ -811,12 +829,18 @@ public class TelegramBot extends TelegramLongPollingBot {
             sendResponse(id.toString(), "Отправка выполнена успешно");
         }
     }
+
+    /**
+     * Получение последних 5 использованных в командах трек-номеров
+     * @param id id пользователя
+     */
     private void processingRecentTracks(Long id){
         LinkedHashSet<String> trackNumbers = new LinkedHashSet<>();
         List<MessageDto> messages = messageService.getMessageWithTrackingNumbers(id);
+        System.out.println("YES");
         for (MessageDto messageDto: messages){
             String[] words = messageDto.getText().split(" ");
-            if (trackingCommand.serviceDefinition(words[1])!=null) trackNumbers.add(words[1]);
+            if (words.length >=2 && trackingCommand.serviceDefinition(words[1])!=null) trackNumbers.add(words[1]);
             if (trackNumbers.size()==5) break;
         }
         if (trackNumbers.isEmpty()) sendResponse(String.valueOf(id), "В сообщениях не найдены трек-номера");

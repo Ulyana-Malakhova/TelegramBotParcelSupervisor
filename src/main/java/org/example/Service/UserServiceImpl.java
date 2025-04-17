@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class UserServiceImpl implements ServiceInterface<UserDto> {
+public class UserServiceImpl implements ServiceInterface<UserDto, User> {
     private final UserRepository userRepository;
     private final StatusServiceImpl statusService;
     private final ModelMapper modelMapper;
@@ -32,7 +32,13 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
-    private List<UserDto> toDto(List<User> users) {
+    /**
+     * Получение dto-списка пользователей
+     * @param users список сущностей пользователей
+     * @return dto-список пользователей
+     */
+    @Override
+    public List<UserDto> toDto(List<User> users) {
         List<UserDto> userDtos = new ArrayList<>();
         for (User user : users) {
             userDtos.add(new UserDto(user.getId(), user.getName(), user.getSurname(), user.getUsername(), user.getPhoneNumber(), user.getStatus().getStatusName(), user.getEmail(), user.getPassword()));
@@ -105,6 +111,13 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
         Optional<User> user = userRepository.findById(id);
         return user.orElse(null);
     }
+
+    /**
+     * Получение списка пользователей по статусу
+     * @param statusString название статуса
+     * @return dto-список пользователей
+     * @throws Exception не найден статус
+     */
     public List<UserDto> findByStatus(String statusString) throws Exception {
         Status status = getStatus(statusString);
         List<User> users = userRepository.findByStatus(status);

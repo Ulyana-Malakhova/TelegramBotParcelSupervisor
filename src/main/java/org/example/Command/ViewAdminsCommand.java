@@ -24,6 +24,12 @@ public class ViewAdminsCommand {
         this.userService = userService;
         this.telegramBot = telegramBot;
     }
+
+    /**
+     * Получение списка администраторов
+     * @return dto-список администраторов
+     * @throws Exception не найдена сущность статуса администратора
+     */
     public List<UserDto> getAdmins() throws Exception {
         return userService.findByStatus(AppConstants.STATUS_ADMIN);
     }

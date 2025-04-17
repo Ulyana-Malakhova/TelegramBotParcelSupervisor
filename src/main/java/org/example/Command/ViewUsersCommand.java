@@ -24,6 +24,12 @@ public class ViewUsersCommand {
         this.userService = userService;
         this.telegramBot = telegramBot;
     }
+
+    /**
+     * Получение списка обычных пользователей
+     * @return dto-список пользователей
+     * @throws Exception не найдена сущность статуса пользователя
+     */
     public List<UserDto> getUsers() throws Exception {
         return userService.findByStatus(AppConstants.STATUS_USER);
     }

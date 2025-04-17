@@ -1,5 +1,6 @@
 package org.example.Service;
 
+import jdk.dynalink.linker.LinkerServices;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
@@ -25,7 +26,7 @@ import java.util.Optional;
  * Сервис для шаблонов сообщений
  */
 @Service
-public class MessageTemplateServiceImpl implements ServiceInterface<MessageTemplateDto> {
+public class MessageTemplateServiceImpl implements ServiceInterface<MessageTemplateDto, MessageTemplate> {
     /**
      * Репозиторий для шаблонов сообщений
      */
@@ -121,6 +122,15 @@ public class MessageTemplateServiceImpl implements ServiceInterface<MessageTempl
             if (messageTemplate.getAuthorUser()!=null) messageTemplateDto.setIdAuthorUser(messageTemplate.getAuthorUser().getId());
         }
         return messageTemplateDto;
+    }
+    @Override
+    public List<MessageTemplateDto> toDto(List<MessageTemplate> messages){
+        List<MessageTemplateDto> messageDtos = new ArrayList<>();
+        for (MessageTemplate message : messages) {
+            messageDtos.add(new MessageTemplateDto(message.getId(), message.getText(),
+                    message.getEditDate(), message.getEvent(), message.getAuthorUser().getId()));
+        }
+        return messageDtos;
     }
 
     /**
