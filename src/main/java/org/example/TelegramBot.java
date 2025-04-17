@@ -309,12 +309,25 @@ public class TelegramBot extends TelegramLongPollingBot {
                 else {
                     sendResponse(chatId, getTemplate("error_command"));
                 }
+                deleteWithoutResponse(userMessage, id);
             } catch (Exception e) {
                 sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
         }
+    }
+    public void deleteWithoutResponse(String userMessage, Long id){
+        if (!userMessage.equals("/send_mass_message")) adminSendMassMessage.remove(id);
+        if (!userMessage.equals("/auth")) adminAuthDTO.remove(id);
+        if (!userMessage.startsWith("/set_user_role")) userUpdateStatus.remove(id);
+        if (!userMessage.startsWith("/set_template")) updateTemplate.remove(id);
+        if (!userMessage.startsWith("/traceability_track")) userPackageTrackingStatus.remove(id);
+        if (userQuestions.containsKey(id) && userQuestions.get(id).equals(questionToken)) userQuestions.remove(id);
+        if (userQuestions.containsKey(id) && userQuestions.get(id).equals(questionEmail) && userMessage.charAt(0)=='/')
+            userQuestions.remove(id);
+        if (!userMessage.startsWith("/add_name") && !(userMessage.equals(answerYes) ||userMessage.equals(answerNo)))
+            userPackage.remove(id);
     }
 
     /**
