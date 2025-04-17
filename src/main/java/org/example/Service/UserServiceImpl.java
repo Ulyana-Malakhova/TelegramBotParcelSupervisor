@@ -1,5 +1,7 @@
 package org.example.Service;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -119,17 +121,24 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("ActiveUser");
-
+        CellStyle cellStyle = workbook.createCellStyle();
+        // Устанавливаем формат числа
+        cellStyle.setDataFormat(workbook.createDataFormat().getFormat("0"));
         Row headerRow = sheet.createRow(0);
         headerRow.createCell(0).setCellValue("id");
+        sheet.setColumnWidth(0, 256 * 15);
         headerRow.createCell(1).setCellValue("name");
+        sheet.setColumnWidth(1, 256 * 15);
         headerRow.createCell(2).setCellValue("surname");
+        sheet.setColumnWidth(2, 256 * 15);
         headerRow.createCell(3).setCellValue("username");
-
+        sheet.setColumnWidth(3, 256 * 15);
         int rowNum = 1;
         for (User userEntity : users) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
+            Cell idCell = row.createCell(0);
+            idCell.setCellValue(userEntity.getId());
+            idCell.setCellStyle(cellStyle);
             row.createCell(1).setCellValue(userEntity.getName());
             row.createCell(2).setCellValue(userEntity.getSurname());
             row.createCell(3).setCellValue(userEntity.getUsername());
@@ -154,17 +163,24 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("BlockedUser");
-
+        CellStyle cellStyle = workbook.createCellStyle();
+        // Устанавливаем формат числа
+        cellStyle.setDataFormat(workbook.createDataFormat().getFormat("0"));
         Row headerRow = sheet.createRow(0);
         headerRow.createCell(0).setCellValue("id");
+        sheet.setColumnWidth(0, 256 * 15);
         headerRow.createCell(1).setCellValue("name");
+        sheet.setColumnWidth(1, 256 * 15);
         headerRow.createCell(2).setCellValue("surname");
+        sheet.setColumnWidth(2, 256 * 15);
         headerRow.createCell(3).setCellValue("username");
-
+        sheet.setColumnWidth(3, 256 * 15);
         int rowNum = 1;
         for (User userEntity : blockedUsers) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
+            Cell idCell = row.createCell(0);
+            idCell.setCellValue(userEntity.getId());
+            idCell.setCellStyle(cellStyle);
             row.createCell(1).setCellValue(userEntity.getName());
             row.createCell(2).setCellValue(userEntity.getSurname());
             row.createCell(3).setCellValue(userEntity.getUsername());
@@ -189,20 +205,31 @@ public class UserServiceImpl implements ServiceInterface<UserDto> {
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Administrators");
-
+        CellStyle cellStyle = workbook.createCellStyle();
+        // Устанавливаем формат числа
+        cellStyle.setDataFormat(workbook.createDataFormat().getFormat("0"));
         Row headerRow = sheet.createRow(0);
         headerRow.createCell(0).setCellValue("id");
+        sheet.setColumnWidth(0, 256 * 15);
         headerRow.createCell(1).setCellValue("name");
+        sheet.setColumnWidth(1, 256 * 15);
         headerRow.createCell(2).setCellValue("surname");
+        sheet.setColumnWidth(2, 256 * 15);
         headerRow.createCell(3).setCellValue("username");
+        sheet.setColumnWidth(3, 256 * 15);
+        headerRow.createCell(4).setCellValue("email");
+        sheet.setColumnWidth(4, 256 * 20);
 
         int rowNum = 1;
         for (User userEntity : admins) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(userEntity.getId());
+            Cell idCell = row.createCell(0);
+            idCell.setCellValue(userEntity.getId());
+            idCell.setCellStyle(cellStyle);
             row.createCell(1).setCellValue(userEntity.getName());
             row.createCell(2).setCellValue(userEntity.getSurname());
             row.createCell(3).setCellValue(userEntity.getUsername());
+            row.createCell(4).setCellValue(userEntity.getEmail());
         }
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
