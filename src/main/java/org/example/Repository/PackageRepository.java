@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +20,7 @@ import java.util.Optional;
 public interface PackageRepository extends JpaRepository<Package, Long> {
     /**
      * Получение всех сохраненных пользователем посылок
+     *
      * @param id id пользователя
      * @return список сущностей посылок пользователя
      */
@@ -29,7 +29,8 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
 
     /**
      * Удаление имени посылки у пользователя
-     * @param id id пользователя
+     *
+     * @param id   id пользователя
      * @param name имя посылки
      */
     @Modifying
@@ -39,8 +40,9 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
 
     /**
      * Получение посылки по id пользователя и имени
+     *
      * @param userId id пользователя
-     * @param name имя посылки
+     * @param name   имя посылки
      * @return сущность посылки
      */
     @Query("SELECT p FROM Package p WHERE p.namePackage = :name AND p.userEntity.id = :userId")
@@ -48,8 +50,9 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
 
     /**
      * Получение посылки по id пользователя и трек-номеру
+     *
      * @param userId id пользователя
-     * @param track трек-номер посылки
+     * @param track  трек-номер посылки
      * @return сущность посылки
      */
     @Query("SELECT p FROM Package p WHERE p.trackNumber = :track AND p.userEntity.id = :userId")
@@ -57,14 +60,15 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
 
     /**
      * Получение посылок за заданный промежуток времени
+     *
      * @param period дата с которой выбираем посылки
+     * @param userId идентификатор пользователя
      * @return список сущностей посылки
      */
-    @Query("SELECT e FROM Package e WHERE e.departureDate >= :period")
-    List<Package> findByPeriod(@Param("period") Date period);
+    @Query("SELECT e FROM Package e WHERE e.departureDate >= :period AND e.userEntity.id = :userId")
+    List<Package> findByPeriodAndById(@Param("period") Date period, @Param("userId") Long userId);
 
     /**
-     *
      * @param status
      * @return
      */

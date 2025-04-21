@@ -9,9 +9,12 @@ import org.example.Command.*;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
+import org.example.Entity.User;
 import org.example.Entity.Message;
 import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
+import org.example.Service.StatusServiceImpl;
+import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -63,7 +66,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final ViewUsersCommand viewUsersCommand;
     private final ViewAdminsCommand viewAdminsCommand;
     private final ViewBlockedUsersCommand viewBlockedUsersCommand;
+    private final UserServiceImpl userService;
+    private final StatusServiceImpl statusService;
     private final UserDataCommand userDataCommand;
+    private final BlockUserCommand blockUserCommand;
+    private final UnblockUserCommand unblockUserCommand;
     /**
      * Множество id пользователей, находящихся в режиме администратора
      */
@@ -127,7 +134,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                        MessageServiceImpl messageService, PackageCommand packageCommand,
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
-                       UserDataCommand userDataCommand) {
+                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand) {
+        this.userService = userService;
+        this.statusService = statusService;
+        this.blockUserCommand = blockUserCommand;
+        this.unblockUserCommand = unblockUserCommand;
         this.messageTemplate = new HashMap<>();
         this.startCommand = startCommand;
         this.botProperties = botProperties;
@@ -174,25 +185,26 @@ public class TelegramBot extends TelegramLongPollingBot {
      */
     private void monitorParcelStatus() {
         CompletableFuture.runAsync(() -> {
-        try {
-            List<PackageDto> trackingPackageDtos = packageCommand.getByStatus(AppConstants.TRACKED);
-            for (PackageDto packageDto : trackingPackageDtos) {
-                String status = packageDto.getLatestStatus();
-                trackingCommand.updateParcelDetails(packageDto);
-                if (packageDto.getLatestStatus() != null && !packageDto.getLatestStatus().equals(status)) {
-                    String name;
-                    if (packageDto.getNamePackage() != null) name = packageDto.getNamePackage();
-                    else name = packageDto.getTrackNumber();
-                    String message = "Отправление " + name + ": " + packageDto.getLatestStatus();
-                    sendResponse(String.valueOf(packageDto.getIdUser()), message);
-                    packageCommand.changeStatus(packageDto);
+            try {
+                List<PackageDto> trackingPackageDtos = packageCommand.getByStatus(AppConstants.TRACKED);
+                for (PackageDto packageDto : trackingPackageDtos) {
+                    String status = packageDto.getLatestStatus();
+                    trackingCommand.updateParcelDetails(packageDto);
+                    if (packageDto.getLatestStatus() != null && !packageDto.getLatestStatus().equals(status)) {
+                        String name;
+                        if (packageDto.getNamePackage() != null) name = packageDto.getNamePackage();
+                        else name = packageDto.getTrackNumber();
+                        String message = "Отправление " + name + ": " + packageDto.getLatestStatus();
+                        sendResponse(String.valueOf(packageDto.getIdUser()), message);
+                        packageCommand.changeStatus(packageDto);
+                    }
                 }
-            }
-            }catch(Exception e){
+            } catch (Exception e) {
                 System.out.println(e.getMessage());
             }
         });
     }
+
     @Override
     public String getBotUsername() {
         return botProperties.username;
@@ -210,7 +222,13 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long chatId = update.getCallbackQuery().getMessage().getChatId();
             if (callbackData.startsWith("report_period_")) {
                 String period = callbackData.split("_")[2];
-                reportCommand.execute(chatId, period);
+                ByteArrayOutputStream excelFile = null;
+                try {
+                    excelFile = reportCommand.execute(chatId, period);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                sendDocument(chatId, excelFile, "reportParcels.xlsx");
             }
         } else if (update.hasMessage() && update.getMessage().hasText()) {
             Long id = update.getMessage().getChatId();
@@ -221,97 +239,102 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
             MessageDto messageDto = new MessageDto(RandomUtils.nextLong(0L, 9999L), userMessage, dateUserMessage, userId);
-            try {
-                messageService.save(messageDto);
-                // Обработка команды /start
-                if (userMessage.equals("/start")) {
-                    sendMessage(startCommand.execute(update));
+            User user = userService.findById(id);
+            if (user == null || !user.getStatus().getStatusName().equals(AppConstants.STATUS_BLOCKED)) {
+                try {
+                    messageService.save(messageDto);
+                    // Обработка команды /start
+                    if (userMessage.equals("/start")) {
+                        sendMessage(startCommand.execute(update));
+                    }
+                    // Обработка команды /help
+                    else if (userMessage.equals("/help")) {
+                        sendResponse(chatId, helpCommand.getHelpMessage());
+                    }
+                    // Обработка команды /about
+                    else if (userMessage.equals("/about")) {
+                        sendResponse(chatId, aboutCommand.getAboutMessage());
+                    }
+                    //обработка команд /track и /history
+                    else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
+                        processingTrack(userMessage, id);
+                    } else if (userMessage.equals("/saved_parcels")) {
+                        sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
+                    } else if(userMessage.equals("/change_password") && authorizedAdmins.contains(id)){
+                        processingChangePassword(id);
+                    } else if (userMessage.equals("/auth")){
+                        processingAuthorization(id);
+                    } else if (userMessage.equals("/exit")){
+                        processingExit(id);
+                    } else if (userMessage.startsWith("/delete_name")) {
+                        processingDeleteName(userMessage, id);
+                    } else if (userMessage.startsWith("/add_name")) {
+                        processingAddName(userMessage, id);
+                    } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)){
+                        processingChangeEmail(userMessage, id);
+                    } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
+                        processingSetUserRole(userMessage, id);
+                    } else if (userMessage.equals("/view_templates") && authorizedAdmins.contains(id)){
+                        ByteArrayOutputStream stream = messageTemplateCommand.sendTemplates();
+                        sendDocument(id, stream, "view_templates.xlsx");
+                    } else if (userMessage.startsWith("/set_template") && authorizedAdmins.contains(id)){
+                        processingSetTemplate(userMessage, id);
+                    } else if (userMessage.startsWith("/traceability_track")) {
+                        processingTraceability(userMessage, id);
+                    } else if (userMessage.equals("/recent_tracks")){
+                        processingRecentTracks(id);
+                    } else if (userMessage.equals("/send_mass_message") && authorizedAdmins.contains(id)){
+                        processingSendMassMessage(id);
+                    } else if (adminSendMassMessage.contains(id)){
+                        sendMassMessage(userMessage, id);
+                    } else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
+                        processingQuestion(userMessage, id);
+                    } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
+                        processingPackage(userMessage, id);
+                    } else if (userPackageTrackingStatus.containsKey(id)) {
+                        processingStatusChange(userMessage, id);
+                    } else if (adminAuthDTO.containsKey(id)){
+                        passwordCheck(userMessage, id, update.getMessage().getMessageId());
+                    } else if (userUpdateStatus.containsKey(id)){
+                        statusChange(userMessage, id);
+                    } else if (updateTemplate.containsKey(id)){
+                        updateMessageTemplate(userMessage, id);
+                    }
+                    // Обработка команды /report
+                    else if (userMessage.equals("/report")) {
+                        reportOption(longChatId);
+                    }
+                    // Обработка команды /view_users
+                    else if (userMessage.equals("/view_users")){
+                        ByteArrayOutputStream excelFile = viewUsersCommand.execute();
+                        sendDocument(longChatId, excelFile, "view_users.xlsx");
+                    }
+                    // Обработка команды /view_blocked_users
+                    else if (userMessage.equals("/view_blocked_users")){
+                        ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
+                        sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
+                    }
+                    // Обработка команды /view_admins
+                    else if (userMessage.equals("/view_admins")){
+                        ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
+                        sendDocument(longChatId, excelFile, "view_admins.xlsx");
+                    }
+                    //обработка команды block_user
+                    else if (userMessage.startsWith("/block_user") && authorizedAdmins.contains(id)) {
+                        processingBlockUserId(userMessage, id);
+                    }
+                    //обработка команды unblock_user
+                    else if (userMessage.startsWith("/unblock_user") && authorizedAdmins.contains(id)) {
+                        processingUnblockUserId(userMessage, id);
+                    } else {
+                        sendResponse(chatId, getTemplate("error_command"));
+                    }
+                    deleteWithoutResponse(userMessage, id);
+                } catch (Exception e) {
+                    sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
                 }
-                // Обработка команды /help
-                else if (userMessage.equals("/help")) {
-                    sendResponse(chatId, helpCommand.getHelpMessage());
-                }
-                // Обработка команды /about
-                else if (userMessage.equals("/about")) {
-                    sendResponse(chatId, aboutCommand.getAboutMessage());
-                }
-                //обработка команд /track и /history
-                else if (userMessage.startsWith("/track") || userMessage.startsWith("/history")) {
-                    processingTrack(userMessage, id);
-                } else if (userMessage.equals("/saved_parcels")) {
-                    sendResponse(chatId, packageCommand.getSavedTrackNumbers(id));
-                } else if(userMessage.equals("/change_password") && authorizedAdmins.contains(id)){
-                    processingChangePassword(id);
-                } else if (userMessage.equals("/auth")){
-                    processingAuthorization(id);
-                }
-                else if (userMessage.equals("/exit")){
-                    processingExit(id);
-                }
-                else if (userMessage.startsWith("/delete_name")) {
-                    processingDeleteName(userMessage, id);
-                } else if (userMessage.startsWith("/add_name")) {
-                    processingAddName(userMessage, id);
-                } else if (userMessage.startsWith("/change_email") && authorizedAdmins.contains(id)){
-                    processingChangeEmail(userMessage, id);
-                } else if (userMessage.startsWith("/set_user_role") && authorizedAdmins.contains(id)){
-                    processingSetUserRole(userMessage, id);
-                }
-                else if (userMessage.equals("/view_templates") && authorizedAdmins.contains(id)){
-                    ByteArrayOutputStream stream = messageTemplateCommand.sendTemplates();
-                    sendDocument(id, stream, "view_templates.xlsx");
-                }
-                else if (userMessage.startsWith("/set_template") && authorizedAdmins.contains(id)){
-                    processingSetTemplate(userMessage, id);
-                }
-                else if (userMessage.startsWith("/traceability_track")) {
-                    processingTraceability(userMessage, id);
-                } else if (userMessage.equals("/recent_tracks")){
-                    processingRecentTracks(id);
-                }
-                else if (userMessage.equals("/send_mass_message") && authorizedAdmins.contains(id)){
-                    processingSendMassMessage(id);
-                } else if (adminSendMassMessage.contains(id)){
-                    sendMassMessage(userMessage, id);
-                }
-                else if (userQuestions.containsKey(id)) {   //если есть вопрос, на который бот ожидает ответ
-                    processingQuestion(userMessage, id);
-                } else if (userPackage.containsKey(id)) {   //если есть промежуточные данные о посылке
-                    processingPackage(userMessage, id);
-                } else if (userPackageTrackingStatus.containsKey(id)) {
-                    processingStatusChange(userMessage, id);
-                }
-                else if (adminAuthDTO.containsKey(id)){
-                    passwordCheck(userMessage, id, update.getMessage().getMessageId());
-                }
-                else if (userUpdateStatus.containsKey(id)){
-                    statusChange(userMessage, id);
-                }
-                else if (updateTemplate.containsKey(id)){
-                    updateMessageTemplate(userMessage, id);
-                }
-                // Обработка команды /report
-                else if (userMessage.equals("/report")) {
-                    reportOption(longChatId);
-                }
-                // Обработка команды /view_users
-                else if (userMessage.equals("/view_users")){
-                    viewUsersCommand.execute(longChatId);
-                }
-                // Обработка команды /view_blocked_users
-                else if (userMessage.equals("/view_blocked_users")){
-                    viewBlockedUsersCommand.execute(longChatId);
-                }
-                // Обработка команды /view_admins
-                else if (userMessage.equals("/view_admins")){
-                    viewAdminsCommand.execute(longChatId);
-                }
-                else {
-                    sendResponse(chatId, getTemplate("error_command"));
-                }
-                deleteWithoutResponse(userMessage, id);
-            } catch (Exception e) {
-                sendResponse(chatId, "Произошла ошибка: " + e.getMessage());
+            } else {
+                sendResponse(chatId, "Вы заблокированы в данном боте");
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
@@ -503,7 +526,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             packageDto.setNameRole(userMessage);
             try {
                 trackingCommand.updateParcelDetails(packageDto);
-            }catch (IOException | ParseException e){
+            } catch (IOException | ParseException e) {
                 sendResponse(String.valueOf(id), "Данные о посылке не были найдены");
             }
             packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
@@ -536,8 +559,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 if (startCommand.updateAdminUser(id, userMessage)) {  //меняем данные о пользователе
                     sendResponse(idString, getTemplate("send"));
                     userQuestions.remove(id);
-                }
-                else
+                } else
                     sendResponse(idString, getTemplate("error_user"));
             } else {
                 sendResponse(idString, getTemplate("error_email"));
@@ -614,23 +636,25 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды изменения почты
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найден статус пользователя
      */
     private void processingChangeEmail(String userMessage, Long id) throws Exception {
-            int spaceIndex = userMessage.indexOf(" ");
-            if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))) { //если почта введена и соответствует шаблону
-                if (userDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
-                    sendResponse(id.toString(), getTemplate("change_email"));
-                else sendResponse(id.toString(), getTemplate("error_change_email"));
-            } else {
-                sendResponse(id.toString(), getTemplate("error_email"));
-            }
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1 && isValidEmail(userMessage.substring(spaceIndex + 1))) { //если почта введена и соответствует шаблону
+            if (userDataCommand.updateEmail(id, userMessage.substring(spaceIndex + 1)))    //если новую почту удалось сохранить
+                sendResponse(id.toString(), getTemplate("change_email"));
+            else sendResponse(id.toString(), getTemplate("error_change_email"));
+        } else {
+            sendResponse(id.toString(), getTemplate("error_email"));
+        }
     }
 
     /**
      * Обработка команды изменения почты
+     *
      * @param id id пользователя
      * @throws Exception не найден статус пользователя
      */
@@ -642,12 +666,13 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка команды авторизации
+     *
      * @param id id пользователя
      */
-    private void processingAuthorization(Long id){
+    private void processingAuthorization(Long id) {
         UserDto userDto = userDataCommand.getAdminDto(id);
-        if (userDto==null) sendResponse(id.toString(), getTemplate("error_auth"));
-        else{
+        if (userDto == null) sendResponse(id.toString(), getTemplate("error_auth"));
+        else {
             sendResponse(id.toString(), getTemplate("input_password"));
             adminAuthDTO.put(id, userDto);
         }
@@ -655,19 +680,19 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Проверка правильности введенного пароля
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
-     * @param messageId id сообщения с паролем
+     * @param id          id пользователя
+     * @param messageId   id сообщения с паролем
      * @throws TelegramApiException ошибка при попытке удалить сообщение с паролем
      */
     private void passwordCheck(String userMessage, Long id, Integer messageId) throws TelegramApiException {
         UserDto userDto = adminAuthDTO.get(id);
-        if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())){
+        if (PasswordUtil.checkPassword(userMessage, userDto.getPassword())) {
             sendResponse(id.toString(), getTemplate("auth"));
             authorizedAdmins.add(id);
             adminAuthDTO.remove(id);
-        }
-        else {
+        } else {
             sendResponse(id.toString(), getTemplate("error_password"));
             adminAuthDTO.remove(id);
         }
@@ -676,11 +701,12 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка выхода из режима администратора
+     *
      * @param id id пользователя
      */
-    private void processingExit(Long id){
+    private void processingExit(Long id) {
         if (!authorizedAdmins.contains(id)) sendResponse(id.toString(), getTemplate("error_exit"));
-        else{
+        else {
             authorizedAdmins.remove(id);
             sendResponse(id.toString(), getTemplate("exit"));
         }
@@ -688,10 +714,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     /**
      * Обработка изменения роли другого пользователя
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      */
-    private void processingSetUserRole(String userMessage, Long id){
+    private void processingSetUserRole(String userMessage, Long id) {
         int spaceIndex = userMessage.indexOf(" ");
         if (spaceIndex != -1 && trackingCommand.isOnlyNumbers(userMessage.substring(spaceIndex + 1))) {
             Long idUser = Long.parseLong(userMessage.substring(spaceIndex + 1));
@@ -705,53 +732,50 @@ public class TelegramBot extends TelegramLongPollingBot {
                     idUserStatus.put(idUser, status);
                     userUpdateStatus.put(id, idUserStatus);
                     sendQuestion(id, getTemplate("role_admin"), answerYes, answerNo);
-                }
-                else if (status.equals(AppConstants.STATUS_USER)) {
+                } else if (status.equals(AppConstants.STATUS_USER)) {
                     idUserStatus.put(idUser, status);
                     userUpdateStatus.put(id, idUserStatus);
                     sendQuestion(id, getTemplate("role_user"), answerYes, answerNo);
                 }
             }
-        }
-        else sendResponse(id.toString(), getTemplate("error_id"));
+        } else sendResponse(id.toString(), getTemplate("error_id"));
     }
 
     /**
      * Обработка команды обновления шаблона сообщения
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      */
-    public void processingSetTemplate(String userMessage, Long id){
+    public void processingSetTemplate(String userMessage, Long id) {
         int spaceIndex = userMessage.indexOf(" ");
-        if (spaceIndex!=-1){
+        if (spaceIndex != -1) {
             String identifierTemplate = userMessage.substring(spaceIndex + 1);
             MessageTemplateDto messageTemplateDto = null;
             if (trackingCommand.isOnlyNumbers(identifierTemplate))
-                messageTemplateDto=messageTemplateCommand.findById(Long.parseLong(identifierTemplate));
-            else messageTemplateDto=messageTemplateCommand.findByEvent(identifierTemplate);
-            if (messageTemplateDto==null){
+                messageTemplateDto = messageTemplateCommand.findById(Long.parseLong(identifierTemplate));
+            else messageTemplateDto = messageTemplateCommand.findByEvent(identifierTemplate);
+            if (messageTemplateDto == null) {
                 sendResponse(id.toString(), getTemplate("error_find_template"));
-            }
-            else {
+            } else {
                 updateTemplate.put(id, messageTemplateDto);
-                sendResponse(id.toString(), "Сейчас шаблон имеет следующий текст: "+messageTemplateDto.getText()
-                +". Введите новый текст или отправьте \"Отмена\" для отмены изменений");
+                sendResponse(id.toString(), "Сейчас шаблон имеет следующий текст: " + messageTemplateDto.getText()
+                        + ". Введите новый текст или отправьте \"Отмена\" для отмены изменений");
             }
-        }
-        else sendResponse(id.toString(), getTemplate("error_id_template"));
+        } else sendResponse(id.toString(), getTemplate("error_id_template"));
     }
 
     /**
      * Обновление шаблона сообщения
+     *
      * @param userMessage текст нового шаблона
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найден пользователь
      */
     public void updateMessageTemplate(String userMessage, Long id) throws Exception {
-        if (userMessage.equals("Отмена")){
+        if (userMessage.equals("Отмена")) {
             sendResponse(id.toString(), getTemplate("cancel_change"));
-        }
-        else{
+        } else {
             MessageTemplateDto messageTemplateDto = updateTemplate.get(id);
             messageTemplateDto.setText(userMessage);
             messageTemplateDto.setIdAuthorUser(id);
@@ -762,34 +786,33 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         updateTemplate.remove(id);
     }
+
     /**
      * Изменение статуса пользователя в зависимости от полученного ответа
+     *
      * @param userMessage полученное сообщение
-     * @param id id пользователя
+     * @param id          id пользователя
      * @throws Exception не найден статус или пользователь
      */
     private void statusChange(String userMessage, Long id) throws Exception {
-        if (userMessage.equals(answerYes)){
+        if (userMessage.equals(answerYes)) {
             Map<Long, String> idUserStatus = userUpdateStatus.get(id);
             userUpdateStatus.remove(id);
-            for (Long idUser: idUserStatus.keySet()){
-                if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)){
+            for (Long idUser : idUserStatus.keySet()) {
+                if (idUserStatus.get(idUser).equals(AppConstants.STATUS_ADMIN)) {
                     adminAuthDTO.remove(idUser);
                     if (userDataCommand.updateAdminToUser(id)) {
                         sendResponseAndDeleteKeyboard(id.toString(), getTemplate("update_role"));
                         sendResponse(idUser.toString(), getTemplate("update_to_user"));
-                    }
-                    else sendResponseAndDeleteKeyboard(id.toString(), getTemplate("error_find_user"));
-                }
-                else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)){
+                    } else sendResponseAndDeleteKeyboard(id.toString(), getTemplate("error_find_user"));
+                } else if (idUserStatus.get(idUser).equals(AppConstants.STATUS_USER)) {
                     sendResponseAndDeleteKeyboard(id.toString(), getTemplate("send_request"));
                     sendResponse(idUser.toString(), getTemplate("update_to_admin"));
                     userQuestions.put(idUser, questionEmail);
                 }
             }
 
-        }
-        else if (userMessage.equals(answerNo)){
+        } else if (userMessage.equals(answerNo)) {
             userUpdateStatus.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("cancel_change"));
         }
@@ -946,7 +969,40 @@ public class TelegramBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-    private String getTemplate(String event){
+
+    private String getTemplate(String event) {
         return messageTemplate.getOrDefault(event, "Сообщение не найдено.");
+    }
+
+    /**
+     * Обработка команды /block_user
+     *
+     * @param userMessage полученное сообщение
+     * @param id          id администратора
+     */
+    private void processingBlockUserId(String userMessage, Long id) {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            Long userId = Long.valueOf(userMessage.substring(spaceIndex + 1));
+            sendResponse(id.toString(), blockUserCommand.blockUser(userId));
+        } else {
+            sendResponse(id.toString(), getTemplate("error_id"));
+        }
+    }
+
+    /**
+     * Обработка команды /unblock_user
+     *
+     * @param userMessage полученное сообщение
+     * @param id          id администратора
+     */
+    private void processingUnblockUserId(String userMessage, Long id) {
+        int spaceIndex = userMessage.indexOf(" ");
+        if (spaceIndex != -1) {
+            Long userId = Long.valueOf(userMessage.substring(spaceIndex + 1));
+            sendResponse(id.toString(), unblockUserCommand.unblockUser(userId));
+        } else {
+            sendResponse(id.toString(), getTemplate("error_id"));
+        }
     }
 }

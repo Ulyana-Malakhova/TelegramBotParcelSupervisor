@@ -1,5 +1,7 @@
 package org.example.Service;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -110,7 +112,7 @@ public class PackageService {
         Role role = roleService.findByName(packageDto.getNameRole());
         TrackingStatus trackingStatus = trackingStatusService.findByName(packageDto.getNameTrackingStatus());
         User user = userService.findById(packageDto.getIdUser());
-        if (user!=null) packageEntity.setUserEntity(user);
+        if (user != null) packageEntity.setUserEntity(user);
         else throw new Exception("Пользователь не найден");
         packageEntity.setRoleEntity(role);
         packageEntity.setTrackingStatusEntity(trackingStatus);
@@ -133,8 +135,8 @@ public class PackageService {
             if (trackingStatus == null) throw new Exception("Статус не найден");
             packageEntity.setTrackingStatusEntity(trackingStatus);
         }
-        if (packageDto.getLatestStatus()!=null) packageEntity.setLatestStatus(packageDto.getLatestStatus());
-        if (packageDto.getReceiptDate()!=null) packageEntity.setReceiptDate(packageDto.getReceiptDate());
+        if (packageDto.getLatestStatus() != null) packageEntity.setLatestStatus(packageDto.getLatestStatus());
+        if (packageDto.getReceiptDate() != null) packageEntity.setReceiptDate(packageDto.getReceiptDate());
         packageRepository.save(packageEntity);
     }
 
@@ -184,30 +186,46 @@ public class PackageService {
      * Создание и заполнение эксель файла
      *
      * @param period пероид интересующих отправленных/полученных посылок
+     * @param userId идентификатор пользователя
      * @return поток с эксель файлом
      * @throws IOException при работе с workbook, если произойдет ошибка при его создании, при записи в лист, при записи данных в поток или при закрытии workbook
      */
-    public ByteArrayOutputStream exportPackageToExcel(String period) throws IOException {
-        List<Package> packages = getPackagesByPeriod(period);
+    public ByteArrayOutputStream exportPackageToExcel(String period, long userId) throws IOException {
+        List<Package> packages = getPackagesByPeriod(period, userId);
 
         XSSFWorkbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("ParcelReport");
 
         Row headerRow = sheet.createRow(0);
+        CellStyle dateCellStyle = workbook.createCellStyle();
+        // Устанавливаем формат даты
+        dateCellStyle.setDataFormat(workbook.createDataFormat().getFormat("dd/MM/yyyy"));
         headerRow.createCell(0).setCellValue("Track_Number");
+        sheet.setColumnWidth(0, 256 * 15);
         headerRow.createCell(1).setCellValue("Name_Package");
+        sheet.setColumnWidth(1, 256 * 15);
         headerRow.createCell(2).setCellValue("Departure_Date");
+        sheet.setColumnWidth(2, 256 * 15);
         headerRow.createCell(3).setCellValue("Receipt_Date");
-        headerRow.createCell(4).setCellValue("Id_Role");
-        headerRow.createCell(5).setCellValue("Id_Tracking_Status");
+        sheet.setColumnWidth(3, 256 * 15);
+        headerRow.createCell(4).setCellValue("Role_Name");
+        sheet.setColumnWidth(4, 256 * 15);
+        headerRow.createCell(5).setCellValue("Tracking_Status");
+        sheet.setColumnWidth(5, 256 * 15);
 
         int rowNum = 1;
         for (Package packageEntity : packages) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(packageEntity.getTrackNumber());
             row.createCell(1).setCellValue(packageEntity.getNamePackage());
-            row.createCell(2).setCellValue(packageEntity.getDepartureDate());
-            row.createCell(3).setCellValue(packageEntity.getReceiptDate());
+            Cell departureDateCell = row.createCell(2);
+            departureDateCell.setCellValue(packageEntity.getDepartureDate());
+            departureDateCell.setCellStyle(dateCellStyle);
+
+            Cell receiptDateCell = row.createCell(3);
+            receiptDateCell.setCellValue(packageEntity.getReceiptDate());
+            receiptDateCell.setCellStyle(dateCellStyle);
+
             row.createCell(4).setCellValue(packageEntity.getRoleEntity().getNameRole());
             row.createCell(5).setCellValue(packageEntity.getTrackingStatusEntity().getNameTrackingStatus());
         }
@@ -223,34 +241,36 @@ public class PackageService {
      * Получение сущности посылок за заданный пероид
      *
      * @param period пероид интересующих отправленных/полученных посылок
+     * @param userId идентификатор пользователя
      * @return список сущностей посылки
      */
-    public List<Package> getPackagesByPeriod(String period) {
+    public List<Package> getPackagesByPeriod(String period, long userId) {
         Calendar calendar = Calendar.getInstance();
 
         switch (period) {
-            case "1 день":
+            case "1day":
                 calendar.add(Calendar.DAY_OF_MONTH, -1);
                 break;
-            case "1 неделя":
+            case "1week":
                 calendar.add(Calendar.WEEK_OF_YEAR, -1);
                 break;
-            case "1 месяц":
+            case "1month":
                 calendar.add(Calendar.MONTH, -1);
                 break;
-            case "3 месяца":
+            case "3months":
                 calendar.add(Calendar.MONTH, -3);
                 break;
-            case "6 месяцев":
+            case "6months":
                 calendar.add(Calendar.MONTH, -6);
                 break;
         }
         Date startDate = calendar.getTime();
-        return packageRepository.findByPeriod(startDate);
+        return packageRepository.findByPeriodAndById(startDate, userId);
     }
 
     /**
      * Получение списка посылок по статусу отслеживания
+     *
      * @param status значение статуса
      * @return список dto-объектов посылок
      * @throws Exception не найден статус отслеживания
@@ -260,7 +280,7 @@ public class PackageService {
         TrackingStatus trackingStatus = trackingStatusService.findByName(status);
         if (trackingStatus == null) throw new Exception("Статус не найден");
         List<Package> packages = packageRepository.findByLatestStatus(trackingStatus);
-        for(Package p: packages){
+        for (Package p : packages) {
             PackageDto packageDto = modelMapper.map(p, PackageDto.class);
             packageDto.setNameRole(p.getRoleEntity().getNameRole());
             packageDto.setNameTrackingStatus(p.getTrackingStatusEntity().getNameTrackingStatus());
