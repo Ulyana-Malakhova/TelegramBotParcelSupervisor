@@ -7,7 +7,6 @@ import org.example.Service.PasswordUtil;
 import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -50,8 +49,6 @@ public class StartCommand {
         message.setReplyMarkup(keyboardMarkup);
         return message;
     }
-
-    @Transactional
     public boolean createUserWithPhone(Long userId, String userName, String userSurname, String userUsername, String phoneNumber, String email, String password) throws Exception {
         UserDto user = new UserDto(userId, userName, userSurname, userUsername, phoneNumber, AppConstants.STATUS_USER, email, password);
         userService.save(user);  // Добавляем пользователя в базу данных

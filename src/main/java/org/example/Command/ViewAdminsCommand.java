@@ -17,12 +17,9 @@ import java.util.List;
 public class ViewAdminsCommand {
     private final UserServiceImpl userService;
 
-    private final TelegramBot telegramBot;
-
     @Autowired
-    public ViewAdminsCommand(UserServiceImpl userService, @Lazy TelegramBot telegramBot) {
+    public ViewAdminsCommand(UserServiceImpl userService) {
         this.userService = userService;
-        this.telegramBot = telegramBot;
     }
 
     /**
@@ -33,17 +30,7 @@ public class ViewAdminsCommand {
     public List<UserDto> getAdmins() throws Exception {
         return userService.findByStatus(AppConstants.STATUS_ADMIN);
     }
-    public void execute(long chatId) {
-        ByteArrayOutputStream excelFile;
-        try {
-            // Получаем администраторов
-            excelFile = userService.exportAdminsToExcel();
-            // После получения Excel-файла, отправляем его пользователю
-            telegramBot.sendDocument(chatId, excelFile, "view_admins.xlsx");
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public ByteArrayOutputStream execute() throws Exception {
+        return userService.exportAdminsToExcel();
     }
 }

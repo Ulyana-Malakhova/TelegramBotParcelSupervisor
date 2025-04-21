@@ -13,25 +13,12 @@ import java.io.IOException;
 public class ViewBlockedUsersCommand {
     private final UserServiceImpl userService;
 
-    private final TelegramBot telegramBot;
-
     @Autowired
-    public ViewBlockedUsersCommand(UserServiceImpl userService, @Lazy TelegramBot telegramBot) {
+    public ViewBlockedUsersCommand(UserServiceImpl userService) {
         this.userService = userService;
-        this.telegramBot = telegramBot;
     }
 
-    public void execute(long chatId) {
-        ByteArrayOutputStream excelFile;
-        try {
-            // Получаем заблокированных пользователей
-            excelFile = userService.exportBlockedUsersToExcel();
-            // После получения Excel-файла, отправляем его пользователю
-            telegramBot.sendDocument(chatId, excelFile, "view_blocked_users.xlsx");
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public ByteArrayOutputStream execute() throws Exception {
+        return userService.exportBlockedUsersToExcel();
     }
 }

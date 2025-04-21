@@ -207,16 +207,18 @@ public class TelegramBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
-            Long chatId = update.getCallbackQuery().getMessage().getChatId();
             if (callbackData.startsWith("report_period_")) {
                 String period = callbackData.split("_")[2];
-                reportCommand.execute(chatId, period);
+                try {
+                    sendDocument(update.getCallbackQuery().getMessage().getChatId(), reportCommand.execute(period), "reportParcels.xlsx");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         } else if (update.hasMessage() && update.getMessage().hasText()) {
             Long id = update.getMessage().getChatId();
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
-            long longChatId = update.getMessage().getChatId();
             long messageDate = update.getMessage().getDate();
             Long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
@@ -292,19 +294,19 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
                 // Обработка команды /report
                 else if (userMessage.equals("/report")) {
-                    reportOption(longChatId);
+                    reportOption(id);
                 }
                 // Обработка команды /view_users
                 else if (userMessage.equals("/view_users")){
-                    viewUsersCommand.execute(longChatId);
+                    sendDocument(id, viewUsersCommand.execute(), "view_users.xlsx");
                 }
                 // Обработка команды /view_blocked_users
                 else if (userMessage.equals("/view_blocked_users")){
-                    viewBlockedUsersCommand.execute(longChatId);
+                    sendDocument(id, viewBlockedUsersCommand.execute(), "view_blocked_users.xlsx");
                 }
                 // Обработка команды /view_admins
                 else if (userMessage.equals("/view_admins")){
-                    viewAdminsCommand.execute(longChatId);
+                    sendDocument(id, viewAdminsCommand.execute(),"view_admins.xlsx");
                 }
                 else {
                     sendResponse(chatId, getTemplate("error_command"));
