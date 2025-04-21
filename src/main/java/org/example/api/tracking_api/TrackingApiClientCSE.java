@@ -2,8 +2,6 @@ package org.example.api.tracking_api;
 
 import org.example.AppConstants;
 import org.example.Dto.PackageDto;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -15,7 +13,7 @@ import java.util.Objects;
 /**
  * Класс для получения данных с api-запросов КСЭ
  */
-public class TrackingApiClientCSE extends TrackingApiClient {
+/*public class TrackingApiClientCSE extends TrackingApiClient {
 
     @Override
     protected JSONArray getStatuses(JSONObject jsonResponse) {
@@ -71,7 +69,7 @@ public class TrackingApiClientCSE extends TrackingApiClient {
      * Метод для сортировки json-массива по дате
      * @param jsonArray сортируемый массив
      */
-    public void sortJSONArrayByDate(JSONArray jsonArray) {
+   /* public void sortJSONArrayByDate(JSONArray jsonArray) {
         JSONObject[] jsonObjects = new JSONObject[jsonArray.length()];
         for (int i = 0; i < jsonArray.length(); i++) {
             jsonObjects[i] = jsonArray.getJSONObject(i);
@@ -98,4 +96,4 @@ public class TrackingApiClientCSE extends TrackingApiClient {
         this.fieldLocation = "EventGeography";
         this.fieldDate = "EventDate";
     }
-}
+}*/

@@ -13,7 +13,7 @@ import java.util.Date;
 /**
  * Класс для получения данных с api-запросов Boxberry
  */
-public class TrackingApiClientBoxberry extends TrackingApiClient {
+/*public class TrackingApiClientBoxberry extends TrackingApiClient {
 
     @Override
     protected JSONArray getStatuses(JSONObject jsonResponse) {
@@ -50,4 +50,4 @@ public class TrackingApiClientBoxberry extends TrackingApiClient {
         this.fieldLocation = "location";
         this.fieldDate = "date_time";
     }
-}
+}*/

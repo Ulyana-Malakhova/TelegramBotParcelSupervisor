@@ -16,6 +16,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
+import java.util.ServiceLoader.Provider;
 
 /**
  * Абстрактный класс для получения данных с api-запросов почтовых служб
@@ -150,4 +154,11 @@ public abstract class TrackingApiClient {
      * @throws ParseException ошибка в парсинге даты
      */
     public abstract void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException;
+    public static List<TrackingApiClient> getServices(ModuleLayer layer) {
+        return ServiceLoader
+                .load(layer, TrackingApiClient.class)
+                .stream()
+                .map(Provider::get)
+                .collect(Collectors.toList());
+    }
 }

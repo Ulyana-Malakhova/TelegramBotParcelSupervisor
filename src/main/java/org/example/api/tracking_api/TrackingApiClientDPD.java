@@ -8,12 +8,18 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * Класс для получения данных с api-запросов DPD
  */
 public class TrackingApiClientDPD extends TrackingApiClient {
+    {
+        url="https://dpd-site-tracing-backend-api-prod.dpd.ru/api/v3/order?orderNumber=";
+        format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+        fieldMessage = "state_name";
+        fieldLocation = "state_city";
+        fieldDate = "state_moment";
+    }
     @Override
     protected JSONArray getStatuses(JSONObject jsonResponse) {
         return jsonResponse.getJSONArray("state");
@@ -44,14 +50,6 @@ public class TrackingApiClientDPD extends TrackingApiClient {
         if (!statusObject.optString(fieldLocation).isEmpty()) latestStatus = latestStatus+" "+statusObject.optString(fieldLocation);
         if (packageDto.getLatestStatus()==null || !latestStatus.equals(packageDto.getLatestStatus())) packageDto.setLatestStatus(latestStatus);
 
-    }
-
-    public TrackingApiClientDPD(){
-        this.url="https://dpd-site-tracing-backend-api-prod.dpd.ru/api/v3/order?orderNumber=";
-        this.format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-        this.fieldMessage = "state_name";
-        this.fieldLocation = "state_city";
-        this.fieldDate = "state_moment";
     }
 }
 
