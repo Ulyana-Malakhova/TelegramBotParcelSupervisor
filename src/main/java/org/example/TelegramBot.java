@@ -305,17 +305,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                         reportOption(longChatId);
                     }
                     // Обработка команды /view_users
-                    else if (userMessage.equals("/view_users")){
+                    else if (userMessage.equals("/view_users") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewUsersCommand.execute();
                         sendDocument(longChatId, excelFile, "view_users.xlsx");
                     }
                     // Обработка команды /view_blocked_users
-                    else if (userMessage.equals("/view_blocked_users")){
+                    else if (userMessage.equals("/view_blocked_users") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
                         sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
                     }
                     // Обработка команды /view_admins
-                    else if (userMessage.equals("/view_admins")){
+                    else if (userMessage.equals("/view_admins") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
                         sendDocument(longChatId, excelFile, "view_admins.xlsx");
                     }
