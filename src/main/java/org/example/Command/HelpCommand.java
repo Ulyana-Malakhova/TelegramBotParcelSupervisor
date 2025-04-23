@@ -19,4 +19,20 @@ public class HelpCommand {
         helpMessage.append("/recent_tracks - Просмотр последних пяти посылок\n");
         return helpMessage.toString();
     }
+    public String getHelpAdminMessage() {
+        StringBuilder helpMessage = new StringBuilder();
+        helpMessage.append("Команды, доступные администраторам:\n");
+        helpMessage.append("/change_password - Изменение пароля администратора\n");
+        helpMessage.append("/change_email - Изменение почты администратора\n");
+        helpMessage.append("/set_user_role - Настройка роли пользователя\n");
+        helpMessage.append("/view_templates - Просмотр всех настроенных шаблонов сообщений\n");
+        helpMessage.append("/set_template - Изменение шаблона сообщения для клиентов\n");
+        helpMessage.append("/send_mass_message - Отправка массового уведомления\n");
+        helpMessage.append("/view_users - Просмотр списка всех активных пользователей бота\n");
+        helpMessage.append("/view_blocked_users - Просмотр списка заблокированных пользователей\n");
+        helpMessage.append("/view_admins - Просмотр списка администраторов\n");
+        helpMessage.append("/block_user - Блокировка пользователя\n");
+        helpMessage.append("/unblock_user - Разблокировка пользователя\n");
+        return helpMessage.toString();
+    }
 }

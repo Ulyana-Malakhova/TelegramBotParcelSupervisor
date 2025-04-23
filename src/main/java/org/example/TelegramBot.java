@@ -250,6 +250,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                     // Обработка команды /help
                     else if (userMessage.equals("/help")) {
                         sendResponse(chatId, helpCommand.getHelpMessage());
+                        if (authorizedAdmins.contains(id)){
+                            sendResponse(chatId,helpCommand.getHelpAdminMessage());
+                        }
                     }
                     // Обработка команды /about
                     else if (userMessage.equals("/about")) {
