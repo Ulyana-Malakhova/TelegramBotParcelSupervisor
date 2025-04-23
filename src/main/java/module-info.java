@@ -1,5 +1,5 @@
 import org.example.api.tracking_api.TrackingApiClient;
-import org.example.api.tracking_api.TrackingApiClientDPD;
+import org.example.api.tracking_api.TrackingApiClientBasic;
 
 module core {
     exports org.example;
@@ -8,6 +8,8 @@ module core {
     exports org.example.Repository;
     exports org.example.Dto;
     exports org.example.Entity;
+    exports org.example.api;
+    exports org.example.api.tracking_api;
     requires spring.core;
     requires spring.beans;
     requires spring.context;
@@ -38,5 +40,5 @@ module core {
     opens org.example.Command to spring.core, spring.beans, spring.context;
 
     uses TrackingApiClient;
-    provides TrackingApiClient with TrackingApiClientDPD;
+    provides TrackingApiClient with TrackingApiClientBasic;
 }

@@ -154,6 +154,19 @@ public abstract class TrackingApiClient {
      * @throws ParseException ошибка в парсинге даты
      */
     public abstract void receivingDeliveryData(PackageDto packageDto) throws IOException, ParseException;
+
+    /**
+     * Проверка, относится ли трек-номер к этому почтовому сервису
+     * @param number строка - трек-номер
+     * @return true - относится, иначе - false
+     */
+    public abstract boolean isNumberPostalService(String number);
+
+    /**
+     * Получение списка всех сервисов из плагина
+     * @param layer слой модулей
+     * @return лист сервисов
+     */
     public static List<TrackingApiClient> getServices(ModuleLayer layer) {
         return ServiceLoader
                 .load(layer, TrackingApiClient.class)
