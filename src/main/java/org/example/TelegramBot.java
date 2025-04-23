@@ -457,7 +457,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             String trackName = userMessage.substring(spaceIndex + 1);   //отделяем имя и трек-номер от команды
             spaceIndex = trackName.indexOf(" ");
             if (spaceIndex != -1 && //если передано и имя, и трек номер, формат которого правильный
-                    trackingCommand.serviceDefinition(trackName.substring(0, spaceIndex)) != null) {
+                    trackingCommand.isNumberPostal(trackName.substring(0, spaceIndex))) {
                 if (packageCommand.findByName(id,   //проверяем, добавлял ли пользователь уже такое имя посылке
                         trackName.substring(spaceIndex + 1).toLowerCase()) != null)
                     sendResponse(id.toString(), getTemplate("name_exists"));
@@ -560,11 +560,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             PackageDto packageDto = packageCommand.findByName(id, track);   //ищем посылку по имени
             if (packageDto == null)
                 packageDto = packageCommand.findByTrack(id, track);   //если посылку не нашли - ищем по трек-номеру
-            if (packageDto == null && trackingCommand.serviceDefinition(track) != null) {   //если посылка в бд не найдена, но в команде передан трек-номер
+            if (packageDto == null && trackingCommand.isNumberPostal(track)) {   //если посылка в бд не найдена, но в команде передан трек-номер
                 packageDto = PackageDto.builder().idUser(id).trackNumber(track).build();
                 sendQuestion(id, getTemplate("quest_notif"), answerYes, answerNo);
                 userPackageTrackingStatus.put(id, packageDto);
-            } else if (packageDto == null && trackingCommand.serviceDefinition(track) == null) {   //если посылка не найдена, и передан не трек-номер
+            } else if (packageDto == null && !trackingCommand.isNumberPostal(track)) {   //если посылка не найдена, и передан не трек-номер
                 sendResponse(id.toString(), getTemplate("error_track"));
             } else if (packageDto != null) { //если посылка найдена
                 if (packageDto.getNameTrackingStatus().equals(AppConstants.DELIVERED)) //и уже доставлена
@@ -842,7 +842,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         System.out.println("YES");
         for (MessageDto messageDto: messages){
             String[] words = messageDto.getText().split(" ");
-            if (words.length >=2 && trackingCommand.serviceDefinition(words[1])!=null) trackNumbers.add(words[1]);
+            if (words.length >=2 && trackingCommand.isNumberPostal(words[1])) trackNumbers.add(words[1]);
             if (trackNumbers.size()==5) break;
         }
         if (trackNumbers.isEmpty()) sendResponse(String.valueOf(id), "В сообщениях не найдены трек-номера");

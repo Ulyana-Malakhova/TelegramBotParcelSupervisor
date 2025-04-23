@@ -8,12 +8,11 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * Класс для получения данных с api-запросов Boxberry
  */
-/*public class TrackingApiClientBoxberry extends TrackingApiClient {
+public class TrackingApiClientBoxberry extends TrackingApiClient {
 
     @Override
     protected JSONArray getStatuses(JSONObject jsonResponse) {
@@ -43,6 +42,11 @@ import java.util.Date;
         }
     }
 
+    @Override
+    public boolean isNumberPostalService(String number) {
+        return false;
+    }
+
     public TrackingApiClientBoxberry(){
         this.url="https://boxberry.ru/api/v1/tracking/order/get?searchId=";
         this.format = new SimpleDateFormat("dd.MM.yyyy (HH:mm)");
@@ -50,4 +54,4 @@ import java.util.Date;
         this.fieldLocation = "location";
         this.fieldDate = "date_time";
     }
-}*/
+}

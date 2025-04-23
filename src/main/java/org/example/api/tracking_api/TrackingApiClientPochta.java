@@ -2,16 +2,17 @@ package org.example.api.tracking_api;
 
 import org.example.AppConstants;
 import org.example.Dto.PackageDto;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
 /**
  * Класс для получения данных с api-запросов Почты России
  */
-/*public class TrackingApiClientPochta extends TrackingApiClient {
+public class TrackingApiClientPochta extends TrackingApiClient {
     public TrackingApiClientPochta() {
         this.url = "https://www.pochta.ru/api/tracking/api/v1/trackings/by-barcodes?language=ru&track-numbers=";
         this.format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
@@ -62,4 +63,9 @@ import java.text.SimpleDateFormat;
         if (Integer.parseInt(typeOper)==3 || Integer.parseInt(typeOper)==5)
             packageDto.setNameTrackingStatus(AppConstants.CANCELED);
     }
-}*/
+
+    @Override
+    public boolean isNumberPostalService(String number) {
+        return false;
+    }
+}
