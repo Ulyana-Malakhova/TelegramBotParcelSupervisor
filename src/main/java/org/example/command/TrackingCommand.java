@@ -109,18 +109,6 @@ public class TrackingCommand {
         return false;
     }
 
-    /*public PostalService serviceDefinition(String trackingNumber){
-        if ((trackingNumber.length()==14 && isOnlyNumbers(trackingNumber)) ||
-                trackingNumber.matches("^[a-zA-Z]{2}\\d{9}[a-zA-Z]{2}$")) return PostalService.RUSSIAN_POST;
-        else if ((trackingNumber.length()==13 && isOnlyNumbers(trackingNumber)) ||
-                trackingNumber.matches("^[a-zA-Z]{3}\\d{9}$")) return PostalService.BOXBERRY;
-        else if (trackingNumber.matches("^[a-zA-Z]{2}\\d{9}$")) return PostalService.DPD;
-        else if (trackingNumber.matches("^\\d{3}-\\d{9}$") ||
-                (isOnlyNumbers(trackingNumber) && trackingNumber.length()==11)
-                || trackingNumber.matches("^[0-9]{3}-[A-Z][0-9]{6}-[0-9]{8}$")) return PostalService.CSE;
-        else return null;
-    }*/
-
     /**
      * Метод проверки, состоит ли трек-номер только из цифр
      * @param trackingNumber трек-номер
