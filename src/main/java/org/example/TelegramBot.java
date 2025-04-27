@@ -66,8 +66,6 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final ViewUsersCommand viewUsersCommand;
     private final ViewAdminsCommand viewAdminsCommand;
     private final ViewBlockedUsersCommand viewBlockedUsersCommand;
-    private final UserServiceImpl userService;
-    private final StatusServiceImpl statusService;
     private final UserDataCommand userDataCommand;
     private final BlockUserCommand blockUserCommand;
     private final UnblockUserCommand unblockUserCommand;
@@ -135,8 +133,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
                        UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand) {
-        this.userService = userService;
-        this.statusService = statusService;
         this.blockUserCommand = blockUserCommand;
         this.unblockUserCommand = unblockUserCommand;
         this.messageTemplate = new HashMap<>();
@@ -222,7 +218,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (callbackData.startsWith("report_period_")) {
                 String period = callbackData.split("_")[2];
                 try {
-                    sendDocument(update.getCallbackQuery().getMessage().getChatId(), reportCommand.execute(period), "reportParcels.xlsx");
+                    long chatId = update.getCallbackQuery().getMessage().getChatId();
+                    sendDocument(chatId, reportCommand.execute(chatId, period), "reportParcels.xlsx");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -232,11 +229,11 @@ public class TelegramBot extends TelegramLongPollingBot {
             String userMessage = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
             long messageDate = update.getMessage().getDate();
-            Long userId = update.getMessage().getFrom().getId();
+            long userId = update.getMessage().getFrom().getId();
             Date dateUserMessage = new Date(messageDate * 1000L);
             MessageDto messageDto = new MessageDto(RandomUtils.nextLong(0L, 9999L), userMessage, dateUserMessage, userId);
-            User user = userService.findById(id);
-            if (user == null || !user.getStatus().getStatusName().equals(AppConstants.STATUS_BLOCKED)) {
+            String status = userDataCommand.getStatusUser(userId);
+            if (status == null || !status.equals(AppConstants.STATUS_BLOCKED)) {
                 try {
                     messageService.save(messageDto);
                     // Обработка команды /start
@@ -301,22 +298,22 @@ public class TelegramBot extends TelegramLongPollingBot {
                     }
                     // Обработка команды /report
                     else if (userMessage.equals("/report")) {
-                        reportOption(longChatId);
+                        reportOption(userId);
                     }
                     // Обработка команды /view_users
                     else if (userMessage.equals("/view_users") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewUsersCommand.execute();
-                        sendDocument(longChatId, excelFile, "view_users.xlsx");
+                        sendDocument(userId, excelFile, "view_users.xlsx");
                     }
                     // Обработка команды /view_blocked_users
                     else if (userMessage.equals("/view_blocked_users") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewBlockedUsersCommand.execute();
-                        sendDocument(longChatId, excelFile, "view_blocked_users.xlsx");
+                        sendDocument(userId, excelFile, "view_blocked_users.xlsx");
                     }
                     // Обработка команды /view_admins
                     else if (userMessage.equals("/view_admins") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
-                        sendDocument(longChatId, excelFile, "view_admins.xlsx");
+                        sendDocument(userId, excelFile, "view_admins.xlsx");
                     }
                     //обработка команды block_user
                     else if (userMessage.startsWith("/block_user") && authorizedAdmins.contains(id)) {
