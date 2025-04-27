@@ -1,6 +1,5 @@
 package org.example.Service;
 
-import jdk.dynalink.linker.LinkerServices;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
@@ -14,6 +13,7 @@ import org.example.Entity.User;
 import org.example.Repository.MessageTemplateRepository;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +33,7 @@ public class MessageTemplateServiceImpl implements ServiceInterface<MessageTempl
     private final MessageTemplateRepository messageTemplateRepository;
     private final ModelMapper modelMapper;
     private final UserServiceImpl userService;
-
+    @Autowired
     public MessageTemplateServiceImpl(MessageTemplateRepository messageTemplateRepository, UserServiceImpl userService) {
         this.messageTemplateRepository = messageTemplateRepository;
         this.modelMapper = new ModelMapper();

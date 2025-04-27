@@ -28,7 +28,6 @@ public class ViewAdminsCommand {
     public List<UserDto> getAdmins() throws Exception {
         return userService.findByStatus(AppConstants.STATUS_ADMIN);
     }
-
     public ByteArrayOutputStream execute() throws Exception {
         return userService.exportAdminsToExcel();
     }

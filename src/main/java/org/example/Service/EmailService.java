@@ -40,8 +40,11 @@ public class EmailService {
      * Количество спец символов в пароле
      */
     private final int countSpecial = 1;
+    private final JavaMailSender emailSender;
     @Autowired
-    public JavaMailSender emailSender;
+    public EmailService(JavaMailSender emailSender) {
+        this.emailSender = emailSender;
+    }
 
     /**
      * Метод отправки электронного письма с паролем администратора

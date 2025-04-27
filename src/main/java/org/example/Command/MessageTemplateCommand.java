@@ -3,6 +3,7 @@ package org.example.Command;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Service.MessageTemplateServiceImpl;
 import org.example.TelegramBot;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -19,14 +20,9 @@ public class MessageTemplateCommand {
      * Сервис шаблонов сообщений
      */
     private final MessageTemplateServiceImpl messageTemplateServiceImpl;
-    /**
-     * Объект телеграм-бота
-     */
-    private final TelegramBot telegramBot;
-
-    public MessageTemplateCommand(MessageTemplateServiceImpl messageTemplateServiceImpl, @Lazy TelegramBot telegramBot) {
+    @Autowired
+    public MessageTemplateCommand(MessageTemplateServiceImpl messageTemplateServiceImpl) {
         this.messageTemplateServiceImpl = messageTemplateServiceImpl;
-        this.telegramBot = telegramBot;
     }
 
     /**

@@ -2,65 +2,64 @@ package org.example.Command;
 
 import org.example.Dto.PackageDto;
 import org.example.api.PackageLocation;
-import org.example.api.tracking_api.TrackingApiClientBoxberry;
-import org.example.api.tracking_api.TrackingApiClientCSE;
-import org.example.api.tracking_api.TrackingApiClientDPD;
-import org.example.api.tracking_api.TrackingApiClientPochta;
+import org.example.api.tracking_api.TrackingApiClient;
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 
 import java.io.IOException;
+import java.lang.module.Configuration;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.ParseException;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Класс обработки команд трекинга
  */
 public class TrackingCommand {
     /**
-     * Объект для использования api Boxberry
-     */
-    private final TrackingApiClientBoxberry apiBoxberry = new TrackingApiClientBoxberry();
-    /**
-     * Объект для использования api КСЭ
-     */
-    private final TrackingApiClientCSE apiCSE = new TrackingApiClientCSE();
-    /**
-     * Объект для использования api DPD
-     */
-    private final TrackingApiClientDPD apiDPD = new TrackingApiClientDPD();
-    /**
-     * Объект для использования api Почты России
-     */
-    private final TrackingApiClientPochta apiPochta = new TrackingApiClientPochta();
-    /**
-     * Сообщение при получении трек-номера, формат которого не совпадает с существующими
-     */
-    private final String errorMessage = "Неправильный формат номера. Проверьте правильность введенного трек-номера";
-    /**
      * Сообщение для ситуации, когда о трек-номере не найдена информация в сервисе
      */
     private final String errorNotFoundMessage = "Данные по трек-номеру не найдены";
+    /**
+     * Слой модулей
+     */
+    private final ModuleLayer layer;
 
+    public TrackingCommand(){
+        Path pluginsDir = Paths.get("src/main/resources/plugins");
+        ModuleFinder pluginsFinder = ModuleFinder.of(pluginsDir);// поиск плагинов
+        List<String> plugins = pluginsFinder    //получение списка имен плагинов
+                .findAll()
+                .stream()
+                .map(ModuleReference::descriptor)
+                .map(ModuleDescriptor::name)
+                .collect(Collectors.toList());
+        Configuration pluginsConfiguration = ModuleLayer    // Конфигурация, которая выполнит резолюцию указанных модулей (проверит корректность графа зависимостей)
+                .boot()
+                .configuration()
+                .resolve(pluginsFinder, ModuleFinder.of(), plugins);
+        layer = ModuleLayer //создание слоя модулей
+                .boot()
+                .defineModulesWithOneLoader(pluginsConfiguration, ClassLoader.getSystemClassLoader());
+    }
     /**
      * Метод для получения текущего положения посылки по команде /track
      * @param trackingNumber трек-номер
      * @return сообщение с информацией о местоположении
      */
     public String getTrackingMessage(String trackingNumber) {
-        PostalService service = serviceDefinition(trackingNumber);  //определяем, к какому сервису относится трек-номер
-        String answer;
-        if (service==null){ //если сервис не определен - возвращаем сообщение об ошибке
-            answer = errorMessage;
-            return answer;
-        }
-        answer = "Служба доставки: "+service.toString()+'\n';
+        String answer = "";
         PackageLocation location = null;
-        switch (service){   //вызываем метод получения местоположения в соответствии с сервисом
-            case RUSSIAN_POST -> location=apiPochta.getTrack(trackingNumber);
-            case DPD -> location = apiDPD.getTrack(trackingNumber);
-            case CSE -> location = apiCSE.getTrack(trackingNumber);
-            case BOXBERRY -> location = apiBoxberry.getTrack(trackingNumber);
+        List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
+        for (TrackingApiClient api : services) {
+            if (api.isNumberPostalService(trackingNumber)) location = api.getTrack(trackingNumber);
         }
-        if (location!=null) answer = answer + location; //формируем окончательно сообщение
-        else answer = answer+errorNotFoundMessage;  //если данные о местоположении не получены - сообщение об ошибке
+        //если данные о местоположении не получены - сообщение об ошибке
+        answer = answer + Objects.requireNonNullElse(location, errorNotFoundMessage); //формируем окончательно сообщение
         return answer;
     }
 
@@ -70,19 +69,11 @@ public class TrackingCommand {
      * @return сообщение с информацией о передвижениях посылки
      */
     public String getHistoryMessage(String trackingNumber){
-        PostalService service = serviceDefinition(trackingNumber);  //определяем, к какому сервису относится трек-номер
-        String answer;
-        if (service==null){ //если сервис не определен - возвращаем сообщение об ошибке
-            answer = errorMessage;
-            return answer;
-        }
-        answer = "Служба доставки: "+service.toString()+'\n';
+        String answer = "";
         PackageLocation[] locations = null;
-        switch (service){   //вызываем метод получения истории в соответствии с сервисом
-            case RUSSIAN_POST -> locations = apiPochta.getHistoryTrack(trackingNumber);
-            case DPD -> locations = apiDPD.getHistoryTrack(trackingNumber);
-            case CSE ->locations = apiCSE.getHistoryTrack(trackingNumber);
-            case BOXBERRY -> locations = apiBoxberry.getHistoryTrack(trackingNumber);
+        List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
+        for (TrackingApiClient api : services) {
+            if (api.isNumberPostalService(trackingNumber)) locations = api.getHistoryTrack(trackingNumber);
         }
         if (locations!=null) {
             for (PackageLocation p: locations)
@@ -99,30 +90,23 @@ public class TrackingCommand {
      * @throws ParseException ошибка в парсинге даты
      */
     public void updateParcelDetails(PackageDto packageDto) throws IOException, ParseException {
-        PostalService service = serviceDefinition(packageDto.getTrackNumber());  //определяем, к какому сервису относится трек-номер
-        switch (service){   //вызываем метод в соответствии с сервисом
-            case RUSSIAN_POST -> apiPochta.receivingDeliveryData(packageDto);
-            case DPD -> apiDPD.receivingDeliveryData(packageDto);
-            case CSE -> apiCSE.receivingDeliveryData(packageDto);
-            case BOXBERRY -> apiBoxberry.receivingDeliveryData(packageDto);
+        List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
+        for (TrackingApiClient api : services) {
+            if (api.isNumberPostalService(packageDto.getTrackNumber())) api.receivingDeliveryData(packageDto);
         }
     }
 
     /**
-     * Метод для определения принадлежности трек номера почтовому сервису
-     * @param trackingNumber трек-номер
-     * @return элемент перечисления почтового сервиса
+     * Проерка принадлежности трек-номера одному из почтовых сервисов
+     * @param trackingNumber строка - трек-номер
+     * @return true - номер относится к одному из сервисов, иначе - false
      */
-    public PostalService serviceDefinition(String trackingNumber){
-        if ((trackingNumber.length()==14 && isOnlyNumbers(trackingNumber)) ||
-                trackingNumber.matches("^[a-zA-Z]{2}\\d{9}[a-zA-Z]{2}$")) return PostalService.RUSSIAN_POST;
-        else if ((trackingNumber.length()==13 && isOnlyNumbers(trackingNumber)) ||
-                trackingNumber.matches("^[a-zA-Z]{3}\\d{9}$")) return PostalService.BOXBERRY;
-        else if (trackingNumber.matches("^[a-zA-Z]{2}\\d{9}$")) return PostalService.DPD;
-        else if (trackingNumber.matches("^\\d{3}-\\d{9}$") ||
-                (isOnlyNumbers(trackingNumber) && trackingNumber.length()==11)
-                || trackingNumber.matches("^[0-9]{3}-[A-Z][0-9]{6}-[0-9]{8}$")) return PostalService.CSE;
-        else return null;
+    public boolean isNumberPostal(String trackingNumber){
+        List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
+        for (TrackingApiClient api : services) {
+            if (api.isNumberPostalService(trackingNumber)) return true;
+        }
+        return false;
     }
 
     /**
