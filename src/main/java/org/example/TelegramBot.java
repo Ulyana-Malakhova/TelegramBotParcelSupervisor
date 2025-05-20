@@ -1,5 +1,6 @@
 package org.example;
 
+import net.sourceforge.tess4j.TesseractException;
 import org.apache.commons.lang3.RandomUtils;
 import org.example.Command.AboutCommand;
 import org.example.Command.HelpCommand;
@@ -9,8 +10,6 @@ import org.example.Command.*;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
-import org.example.Entity.User;
-import org.example.Entity.Message;
 import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
 import org.example.Service.StatusServiceImpl;
@@ -18,9 +17,11 @@ import org.example.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
@@ -31,9 +32,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.HashMap;
@@ -45,6 +44,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import net.sourceforge.tess4j.Tesseract;
 
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
@@ -334,6 +335,61 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
         } else if (update.hasMessage() && update.getMessage().hasContact()) {
             handleContactUpdate(update);
+        } else if(update.hasMessage() && update.getMessage().hasPhoto()){
+            List<PhotoSize> photos = update.getMessage().getPhoto();
+            PhotoSize photo = photos.get(photos.size() - 1);
+            String fileId = photo.getFileId();
+            try {
+                String filePath = execute(new GetFile(fileId)).getFilePath();
+                String fileUrl = "https://api.telegram.org/file/bot"+ botProperties.token+"/"+filePath;
+                File imageFile = new File("track_image.jpg");
+                try (java.io.InputStream in = new java.net.URL(fileUrl).openStream()) {
+                    java.nio.file.Files.copy(in, imageFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                String recognizedText = recognizeText(imageFile);
+                SendMessage message = new SendMessage();
+                message.setChatId(update.getMessage().getChatId().toString());
+                message.setText("Распознанный текст:\n" + recognizedText);
+                execute(message);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Распознавание текста на изображении
+     * @param imageFile распознаваемый файл
+     * @return текст с изображения
+     */
+    private String recognizeText(File imageFile) {
+        try {
+            Tesseract tesseract = new Tesseract();
+            tesseract.setDatapath("src/main/resources/tessdata");
+            tesseract.setLanguage("eng");
+            tesseract.setTessVariable("user_defined_dpi", "300");
+            tesseract.setTessVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-");
+            String fullText = tesseract.doOCR(imageFile);
+            fullText = fullText.replaceAll("\\s{2,}", " ").trim();
+            String[] lines = fullText.split("\\r?\\n");
+            String result = null;
+            for (String line : lines) {
+                if (trackingCommand.isNumberPostal(line)) {
+                    if (result == null){
+                        result = line;
+                    }
+                    else {
+                        result = result +"\n"+ line;
+                    }
+                }
+            }
+            if (result == null) {
+                result = "Трек номер не найден";
+            }
+            return result;
+        } catch (TesseractException e) {
+            e.printStackTrace();
+            return "Ошибка распознавания текста";
         }
     }
 
