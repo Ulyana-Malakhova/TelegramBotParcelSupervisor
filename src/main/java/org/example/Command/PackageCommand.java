@@ -26,8 +26,8 @@ public class PackageCommand {
      * @param packageDto dto-объект посылки
      * @throws Exception если имя уже используется текущим пользователем или пользователь не найден в бд
      */
-    public void addNameTrackNumber(PackageDto packageDto) throws Exception {
-        packageService.addName(packageDto);
+    public void addTrackNumber(PackageDto packageDto) throws Exception {
+        packageService.addTrackNumber(packageDto);
     }
 
     /**

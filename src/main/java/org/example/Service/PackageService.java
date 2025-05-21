@@ -99,12 +99,12 @@ public class PackageService {
     }
 
     /**
-     * Добавление имени посылке
+     * Добавление посылкb
      *
      * @param packageDto dto-объект со всеми данными посылки
      * @throws Exception если посылка с таким именем уже существует у пользователя или сам пользователь не найден в бд
      */
-    public void addName(PackageDto packageDto) throws Exception {
+    public void addTrackNumber(PackageDto packageDto) throws Exception {
         Optional<Package> packageOptional = packageRepository.findByNamePackageAndUserId(packageDto.getIdUser(),
                 packageDto.getNamePackage());
         if (packageOptional.isPresent()) throw new Exception("Уже существует отправление с данным именем");

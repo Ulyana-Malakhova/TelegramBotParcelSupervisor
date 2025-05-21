@@ -1,5 +1,4 @@
 import org.example.api.tracking_api.TrackingApiClient;
-import org.example.api.tracking_api.TrackingApiClientBasic;
 
 module core {
     exports org.example;
@@ -40,5 +39,4 @@ module core {
     opens org.example.Command to spring.core, spring.beans, spring.context;
 
     uses TrackingApiClient;
-    provides TrackingApiClient with TrackingApiClientBasic;
 }

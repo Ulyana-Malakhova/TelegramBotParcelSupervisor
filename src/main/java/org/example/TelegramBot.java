@@ -9,8 +9,6 @@ import org.example.Command.*;
 import org.example.Dto.MessageTemplateDto;
 import org.example.Dto.PackageDto;
 import org.example.Dto.UserDto;
-import org.example.Entity.User;
-import org.example.Entity.Message;
 import org.example.Service.MessageServiceImpl;
 import org.example.Service.PasswordUtil;
 import org.example.Service.StatusServiceImpl;
@@ -483,7 +481,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                             trackName.substring(0, spaceIndex));
                     if (packageDto != null) {   //если данные есть - меняем полученный DTO-объект
                         packageDto.setNamePackage(trackName.substring(spaceIndex + 1).toLowerCase());
-                        packageCommand.addNameTrackNumber(packageDto);
+                        packageCommand.addTrackNumber(packageDto);
                         sendResponse(id.toString(), getTemplate("save"));
 
                     } else {    //данных нет - создаем новый DTO-объект
@@ -525,7 +523,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             } catch (IOException | ParseException e) {
                 sendResponse(String.valueOf(id), "Данные о посылке не были найдены");
             }
-            packageCommand.addNameTrackNumber(packageDto);  //сохраняем данные посылки
+            packageCommand.addTrackNumber(packageDto);  //сохраняем данные посылки
             userPackage.remove(id);
             sendResponseAndDeleteKeyboard(id.toString(), getTemplate("save"));
         }

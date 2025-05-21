@@ -27,9 +27,11 @@ public class TrackingCommand {
     /**
      * Слой модулей
      */
-    private final ModuleLayer layer;
+    private ModuleLayer layer;
 
     public TrackingCommand(){
+    }
+    private void updateLayer(){
         Path pluginsDir = Paths.get("src/main/resources/plugins");
         ModuleFinder pluginsFinder = ModuleFinder.of(pluginsDir);// поиск плагинов
         List<String> plugins = pluginsFinder    //получение списка имен плагинов
@@ -52,6 +54,7 @@ public class TrackingCommand {
      * @return сообщение с информацией о местоположении
      */
     public String getTrackingMessage(String trackingNumber) {
+        updateLayer();
         String answer = "";
         PackageLocation location = null;
         List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
@@ -69,6 +72,7 @@ public class TrackingCommand {
      * @return сообщение с информацией о передвижениях посылки
      */
     public String getHistoryMessage(String trackingNumber){
+        updateLayer();
         String answer = "";
         PackageLocation[] locations = null;
         List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
@@ -90,6 +94,7 @@ public class TrackingCommand {
      * @throws ParseException ошибка в парсинге даты
      */
     public void updateParcelDetails(PackageDto packageDto) throws IOException, ParseException {
+        updateLayer();
         List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
         for (TrackingApiClient api : services) {
             if (api.isNumberPostalService(packageDto.getTrackNumber())) api.receivingDeliveryData(packageDto);
@@ -102,6 +107,7 @@ public class TrackingCommand {
      * @return true - номер относится к одному из сервисов, иначе - false
      */
     public boolean isNumberPostal(String trackingNumber){
+        updateLayer();
         List<TrackingApiClient> services = TrackingApiClient.getServices(layer);
         for (TrackingApiClient api : services) {
             if (api.isNumberPostalService(trackingNumber)) return true;
