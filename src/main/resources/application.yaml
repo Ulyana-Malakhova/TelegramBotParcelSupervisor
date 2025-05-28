@@ -1,3 +1,11 @@
+management:
+  endpoint:
+    metrics:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
 spring:
   jpa:
     hibernate:
