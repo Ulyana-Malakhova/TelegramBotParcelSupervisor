@@ -70,6 +70,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final UserDataCommand userDataCommand;
     private final BlockUserCommand blockUserCommand;
     private final UnblockUserCommand unblockUserCommand;
+    private final StatsCommand statsCommand;
     /**
      * Множество id пользователей, находящихся в режиме администратора
      */
@@ -133,9 +134,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                        MessageServiceImpl messageService, PackageCommand packageCommand,
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
-                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand) {
+                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand, StatsCommand statsCommand) {
         this.blockUserCommand = blockUserCommand;
         this.unblockUserCommand = unblockUserCommand;
+        this.statsCommand = statsCommand;
         this.messageTemplate = new HashMap<>();
         this.startCommand = startCommand;
         this.botProperties = botProperties;
@@ -315,6 +317,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                     else if (userMessage.equals("/view_admins") && authorizedAdmins.contains(id)){
                         ByteArrayOutputStream excelFile = viewAdminsCommand.execute();
                         sendDocument(userId, excelFile, "view_admins.xlsx");
+                    }
+                    //обработка команды /stats
+                    else if (userMessage.equals("/stats") && authorizedAdmins.contains(id)){
+                        ByteArrayOutputStream excelFile = statsCommand.execute();
+                        sendDocument(userId, excelFile, "stats.xlsx");
                     }
                     //обработка команды block_user
                     else if (userMessage.startsWith("/block_user") && authorizedAdmins.contains(id)) {
