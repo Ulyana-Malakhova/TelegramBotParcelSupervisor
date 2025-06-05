@@ -71,6 +71,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final BlockUserCommand blockUserCommand;
     private final UnblockUserCommand unblockUserCommand;
     private final StatsCommand statsCommand;
+    private final GroupCommand groupCommand;
     /**
      * Множество id пользователей, находящихся в режиме администратора
      */
@@ -134,10 +135,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                        MessageServiceImpl messageService, PackageCommand packageCommand,
                        ReportCommand reportCommand, ViewUsersCommand viewUsersCommand,
                        ViewAdminsCommand viewAdminsCommand, ViewBlockedUsersCommand viewBlockedUsersCommand,
-                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand, StatsCommand statsCommand) {
+                       UserServiceImpl userService, StatusServiceImpl statusService, UserDataCommand userDataCommand, BlockUserCommand blockUserCommand, UnblockUserCommand unblockUserCommand, StatsCommand statsCommand, GroupCommand groupCommand) {
         this.blockUserCommand = blockUserCommand;
         this.unblockUserCommand = unblockUserCommand;
         this.statsCommand = statsCommand;
+        this.groupCommand = groupCommand;
         this.messageTemplate = new HashMap<>();
         this.startCommand = startCommand;
         this.botProperties = botProperties;
@@ -360,6 +362,28 @@ public class TelegramBot extends TelegramLongPollingBot {
                 execute(message);
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void handleGroupCommand(String messageText, String chatId, long userId) {
+        String[] parts = messageText.split("\\s+");
+        if (parts.length < 3) {
+            sendResponse(chatId, "Неверно введена команда. Используйте: /group <track_numbers...> <group_name>");
+        }
+        else {
+            String[] result = groupCommand.saveGroup(parts, userId);
+            if (result.length ==0){
+                sendResponse(chatId, "Трек номера объединены в группу");
+            }
+            else {
+                StringBuilder messageResult = new StringBuilder("Некоторые номера не отслеживаются, чтобы объединить данные трек номера в группу для каждого номера введите команду '/traceability_track':\n");
+                for (String track : result){
+                    if (track != null) {
+                        messageResult.append(track).append("\n");
+                    }
+                }
+                sendResponse(chatId, messageResult.toString());
             }
         }
     }
