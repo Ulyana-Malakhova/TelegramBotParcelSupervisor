@@ -34,6 +34,7 @@ module core {
     requires spring.security.crypto;
     requires spring.tx;
     requires org.hibernate.orm.core;
+    requires tess4j;
     opens org.example.Entity;
     opens org.example to spring.core, spring.beans, spring.context, spring.boot;
     opens org.example.Command to spring.core, spring.beans, spring.context;

@@ -289,4 +289,13 @@ public class PackageService {
         }
         return packageDtos;
     }
+
+    public Package findById(Long packageId) {
+        Optional<Package> packageOptional = packageRepository.findById(packageId);
+        return packageOptional.orElse(null);
+    }
+    public Package findByTrackAndId(Long userId, String track) {
+        Optional<Package> packageOptional = packageRepository.findByTrackNumberAndUserId(userId,track);
+        return packageOptional.orElse(null);
+    }
 }
