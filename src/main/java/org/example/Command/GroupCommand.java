@@ -4,6 +4,7 @@ import org.apache.commons.lang3.RandomUtils;
 import org.example.Dto.GroupDto;
 import org.example.Dto.GroupPackageDto;
 import org.example.Entity.Group;
+import org.example.Entity.GroupPackage;
 import org.example.Entity.Package;
 import org.example.Service.GroupService;
 import org.example.Service.PackageService;
@@ -11,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 @Component
 public class GroupCommand {
@@ -44,5 +47,27 @@ public class GroupCommand {
             }
         }
         return trackNumbersPackage;
+    }
+
+    public String[] trackingCommand(String userMessage, long userId){
+        String[] parts = userMessage.split("\\s+");
+        Group group = groupService.findByName(parts[1],userId);
+        List<GroupPackage> groupPackages = groupService.findGroupPackageByGroup(group.getId());
+        int lengthIdPackages = 0;
+        String[] trackNumbers = new String[groupPackages.size()];
+        for (GroupPackage groupPackage : groupPackages){
+            Package packageEntity = packageService.findById(groupPackage.getPackageEntity().getIdPackage());
+            int countPackage = 0;
+            for (String track : trackNumbers){
+                if (Objects.equals(track, packageEntity.getTrackNumber())){
+                    countPackage++;
+                }
+            }
+            if (countPackage == 0){
+                trackNumbers[lengthIdPackages] = packageEntity.getTrackNumber();
+                lengthIdPackages++;
+            }
+        }
+        return trackNumbers;
     }
 }

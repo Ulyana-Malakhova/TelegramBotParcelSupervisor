@@ -11,6 +11,7 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -67,6 +68,10 @@ public class GroupService {
     public Group findByName(String name, Long userId){
         return groupRepository.findByIdAndName(name, userId);
 
+    }
+
+    public List<GroupPackage> findGroupPackageByGroup(Long groupId){
+        return groupPackageRepository.findByGroupId(groupId);
     }
 }
 

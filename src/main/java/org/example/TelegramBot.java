@@ -333,6 +333,17 @@ public class TelegramBot extends TelegramLongPollingBot {
                     else if (userMessage.startsWith("/unblock_user") && authorizedAdmins.contains(id)) {
                         processingUnblockUserId(userMessage, id);
                     }
+                    else if(userMessage.startsWith("/group_tracking")){
+                        String[] resultTrackingNumbers = groupCommand.trackingCommand(userMessage,userId);
+                        String resultGroupTracking = "Для посылки " + resultTrackingNumbers[0] + ":\n" + trackingCommand.getTrackingMessage(resultTrackingNumbers[0]);
+                        for (int i =1;i< resultTrackingNumbers.length;i++){
+                            if (resultTrackingNumbers[i] !=null){
+                                resultGroupTracking += "\nДля посылки " + resultTrackingNumbers[i] + ":\n" + trackingCommand.getTrackingMessage(resultTrackingNumbers[i]);
+                            }
+                        }
+
+                        sendResponse(chatId, resultGroupTracking);
+                    }
                     else if(userMessage.startsWith("/group")){
                         handleGroupCommand(userMessage,chatId,userId);
                     }
