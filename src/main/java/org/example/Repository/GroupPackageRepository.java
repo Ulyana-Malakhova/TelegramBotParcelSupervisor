@@ -14,5 +14,4 @@ public interface GroupPackageRepository extends JpaRepository<GroupPackage, Long
     @Transactional
     @Query("SELECT g FROM GroupPackage g WHERE g.id.groupId = :groupId")
     List<GroupPackage> findByGroupId(@Param("groupId") Long groupId);
-
 }

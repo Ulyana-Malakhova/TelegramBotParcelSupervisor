@@ -17,6 +17,8 @@ public class HelpCommand {
         helpMessage.append("/traceability_track - Изменение статуса отслеживаемости посылки(через пробел вводится трек-номер или название посылки)\n");
         helpMessage.append("/report - Получение отчетов об отправленных/полученных посылках за указанный период\n");
         helpMessage.append("/recent_tracks - Просмотр последних пяти посылок\n");
+        helpMessage.append("/group - Объединение посылок в группы\n");
+        helpMessage.append("/group_tracking - Отслеживание группы посылок\n");
         return helpMessage.toString();
     }
     public String getHelpAdminMessage() {
@@ -33,6 +35,7 @@ public class HelpCommand {
         helpMessage.append("/view_admins - Просмотр списка администраторов\n");
         helpMessage.append("/block_user - Блокировка пользователя\n");
         helpMessage.append("/unblock_user - Разблокировка пользователя\n");
+        helpMessage.append("/stats - Получение статистики использования бота\n");
         return helpMessage.toString();
     }
 }
