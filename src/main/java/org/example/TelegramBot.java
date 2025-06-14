@@ -332,7 +332,11 @@ public class TelegramBot extends TelegramLongPollingBot {
                     //обработка команды unblock_user
                     else if (userMessage.startsWith("/unblock_user") && authorizedAdmins.contains(id)) {
                         processingUnblockUserId(userMessage, id);
-                    } else {
+                    }
+                    else if(userMessage.startsWith("/group")){
+                        handleGroupCommand(userMessage,chatId,userId);
+                    }
+                    else {
                         sendResponse(chatId, getTemplate("error_command"));
                     }
                     deleteWithoutResponse(userMessage, id);
@@ -373,8 +377,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
         else {
             String[] result = groupCommand.saveGroup(parts, userId);
-            if (result.length ==0){
-                sendResponse(chatId, "Трек номера объединены в группу");
+            int countString = 0;
+            for (String r : result){
+                if (r == null){
+                    countString++;
+                }
+            }
+            if (result.length == countString){
+                sendResponse(chatId,"Группа создана");
             }
             else {
                 StringBuilder messageResult = new StringBuilder("Некоторые номера не отслеживаются, чтобы объединить данные трек номера в группу для каждого номера введите команду '/traceability_track':\n");

@@ -2,10 +2,8 @@ package org.example.Service;
 
 import org.example.Dto.GroupDto;
 import org.example.Dto.GroupPackageDto;
-import org.example.Entity.Group;
-import org.example.Entity.GroupPackage;
+import org.example.Entity.*;
 import org.example.Entity.Package;
-import org.example.Entity.User;
 import org.example.Repository.GroupPackageRepository;
 import org.example.Repository.GroupRepository;
 import org.modelmapper.ModelMapper;
@@ -43,7 +41,12 @@ public class GroupService {
     }
 
     public void saveGroupPackage(GroupPackageDto groupPackageDto) {
-        GroupPackage groupPackage = modelMapper.map(groupPackageDto, GroupPackage.class);
+        GroupPackage groupPackage = new GroupPackage();
+        GroupPackageId id = new GroupPackageId();
+        id.setGroupId(groupPackageDto.getIdGroup());
+        id.setPackageId(groupPackageDto.getIdPackage());
+        groupPackage.setId(id);
+
         Package packageEntity = packageService.findById(groupPackageDto.getIdPackage());
         Group group = findById(groupPackageDto.getIdGroup());
         if (group != null && packageEntity != null){
